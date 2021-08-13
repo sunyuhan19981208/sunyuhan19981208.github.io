@@ -5,7 +5,7 @@
   const FRAME_RATE = 60
   const PARTICLE_NUM = 2000
   const RADIUS = Math.PI * 2
-  const CANVASWIDTH = 2000
+  const CANVASWIDTH = 1000
   const CANVASHEIGHT = 150
   const CANVASID = 'canvas'
 
@@ -42,7 +42,7 @@
   '说了要一起去KTV',
   '一起去旅游',
   '一起去逛街',
-  '一起去蹦床动物园水族馆',
+  '一起去动物园水族馆',
   '一起去......',
   '所以你放心',
   '说了等你考完研就肯定等',
