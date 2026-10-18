@@ -1,0 +1,34 @@
+[
+  {
+    "source": "llm-barrage-interaction",
+    "translation": "llm-barrage-interaction-en",
+    "language": "en",
+    "sourceSha256": "bde36d0297b6869f17939c3d583a4c8776f14ab3ce16a493dbf63f756b752428",
+    "translatedBlocks": 87,
+    "date": "2026-10-19"
+  },
+  {
+    "source": "llm-distillation-and-reasoning-compression",
+    "translation": "llm-distillation-and-reasoning-compression-en",
+    "language": "en",
+    "sourceSha256": "8bfe2cca59923ef6c0b5549498617f6a04044a54d7254de092fd11a228b8fbe3",
+    "translatedBlocks": 110,
+    "date": "2026-10-19"
+  },
+  {
+    "source": "livethinking",
+    "translation": "livethinking-cn",
+    "language": "zh-CN",
+    "sourceSha256": "85e626d4815bd4fd3704fbd59fecee67950225fe034e06b1d5de50494846e8d2",
+    "translatedBlocks": 228,
+    "date": "2026-10-19"
+  },
+  {
+    "source": "agenticrl",
+    "translation": "agenticrl-en",
+    "language": "en",
+    "sourceSha256": "26f2a7fc2a2dab331b9249f9cb7bf21f157e4e44cd7b3cbbc4f7161df174cd27",
+    "translatedBlocks": 89,
+    "date": "2026-10-19"
+  }
+]

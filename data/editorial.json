@@ -1,0 +1,62 @@
+{
+  "agenticrl-en": {
+    "title": "From workflows to Multi-Agent RL",
+    "summary": "Tool use and final responses need different skills—and different rewards.",
+    "minutes": 3,
+    "figures": 2
+  },
+  "agenticrl": {
+    "title": "从固定工作流到 Multi-Agent RL",
+    "summary": "工具调用和最终回复需要不同的能力，也需要不同的奖励。",
+    "minutes": 3,
+    "figures": 2
+  },
+  "harness-aware-training-cn": {
+    "title": "让模型适应变化的 Harness",
+    "summary": "工具、规则和提示词会变，训练也不能只认一个版本。",
+    "minutes": 3,
+    "figures": 1
+  },
+  "harness-aware-training": {
+    "title": "Training for a changing Harness",
+    "summary": "Tools, rules, and prompts change. Training should not assume one fixed runtime.",
+    "minutes": 3,
+    "figures": 1
+  },
+  "livethinking-cn": {
+    "title": "LiveThinking：把推理压到直播能用",
+    "summary": "先蒸馏能力，再用强化学习去掉多余的思考。",
+    "minutes": 3,
+    "figures": 2
+  },
+  "livethinking": {
+    "title": "LiveThinking: reasoning at livestream speed",
+    "summary": "Distill the capability, then use reinforcement learning to remove unnecessary thinking.",
+    "minutes": 3,
+    "figures": 2
+  },
+  "llm-barrage-interaction-en": {
+    "title": "Making sense of livestream comments",
+    "summary": "Intent recognition, entity parsing, retrieval, and the context a short comment leaves unsaid.",
+    "minutes": 3,
+    "figures": 1
+  },
+  "llm-barrage-interaction": {
+    "title": "直播弹幕，怎么接得住上下文",
+    "summary": "从意图识别、实体解析到回复生成，记录一条弹幕经过的处理链路。",
+    "minutes": 3,
+    "figures": 1
+  },
+  "llm-distillation-and-reasoning-compression-en": {
+    "title": "Making reasoning models respond sooner",
+    "summary": "Distill the model, then shorten its reasoning without teaching it to give worse answers.",
+    "minutes": 3,
+    "figures": 2
+  },
+  "llm-distillation-and-reasoning-compression": {
+    "title": "把推理模型的等待时间降下来",
+    "summary": "从 R1 蒸馏到双偏好 DPO：短一点，也要答得好一点。",
+    "minutes": 3,
+    "figures": 2
+  }
+}

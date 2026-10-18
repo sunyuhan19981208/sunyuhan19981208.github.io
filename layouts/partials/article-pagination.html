@@ -1,0 +1,8 @@
+{{ $current := . }}
+{{ $posts := (where (where site.RegularPages "Section" "posts") "Params.secondaryVersion" "ne" true).ByDate }}
+<nav class="article-pagination" aria-label="相邻文章">
+{{ range $i, $post := $posts }}{{ if eq $post.Params.workId $current.Params.workId }}
+  {{ if gt $i 0 }}{{ $previous := index $posts (sub $i 1) }}{{ if ne $previous.Params.language $current.Params.language }}{{ $previous = site.GetPage (printf "/posts/%s" $previous.Params.counterpart) }}{{ end }}<a href="{{ $previous.RelPermalink }}"><span>← {{ if eq $current.Params.language "en" }}PREVIOUS{{ else }}上一篇{{ end }}</span><strong>{{ with index site.Data.editorial $previous.Params.slug }}{{ .title }}{{ end }}</strong></a>{{ end }}
+  {{ if lt $i (sub (len $posts) 1) }}{{ $next := index $posts (add $i 1) }}{{ if ne $next.Params.language $current.Params.language }}{{ $next = site.GetPage (printf "/posts/%s" $next.Params.counterpart) }}{{ end }}<a href="{{ $next.RelPermalink }}"><span>{{ if eq $current.Params.language "en" }}NEXT{{ else }}下一篇{{ end }} →</span><strong>{{ with index site.Data.editorial $next.Params.slug }}{{ .title }}{{ end }}</strong></a>{{ end }}
+{{ end }}{{ end }}
+</nav>

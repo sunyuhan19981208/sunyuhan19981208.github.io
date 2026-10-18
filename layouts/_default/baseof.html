@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="{{ .Params.language | default `zh-CN` }}">
+<head>
+  {{ $editorial := index site.Data.editorial (.Params.slug | default "") }}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ if not .IsHome }}{{ if $editorial }}{{ $editorial.title }}{{ else }}{{ .Title }}{{ end }} · {{ end }}{{ site.Title }}</title>
+  <meta name="description" content="{{ if $editorial }}{{ $editorial.summary }}{{ else }}{{ .Description | default site.Params.description }}{{ end }}">
+  {{ if not (hasPrefix site.BaseURL "https://example.org") }}<link rel="canonical" href="{{ .Permalink }}">{{ end }}
+  {{ if .Params.counterpart }}<link rel="alternate" hreflang="{{ .Params.language }}" href="{{ .Permalink }}">{{ with site.GetPage (printf "/posts/%s" .Params.counterpart) }}<link rel="alternate" hreflang="{{ .Params.language }}" href="{{ .Permalink }}">{{ end }}{{ end }}
+  <meta property="og:title" content="{{ if $editorial }}{{ $editorial.title }}{{ else }}{{ .Title | default site.Title }}{{ end }}">
+  <meta property="og:description" content="{{ if $editorial }}{{ $editorial.summary }}{{ else }}{{ .Description | default site.Params.description }}{{ end }}">
+  <meta property="og:type" content="{{ if eq .Section `posts` }}article{{ else }}website{{ end }}">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="{{ `favicon.svg` | relURL }}" type="image/svg+xml">
+  <link rel="alternate" type="application/rss+xml" title="y'log" href="{{ `index.xml` | relURL }}">
+  <link rel="stylesheet" href="{{ `css/editorial.css` | relURL }}?v={{ readFile `static/css/editorial.css` | sha256 | truncate 12 `` }}">
+  {{ if eq .Section "posts" }}<link rel="stylesheet" href="{{ `css/publications.css` | relURL }}?v={{ readFile `static/css/publications.css` | sha256 | truncate 12 `` }}">{{ end }}
+  <script>try{let t=localStorage.getItem('ylog-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}</script>
+  <script src="{{ `js/main.js` | relURL }}?v={{ readFile `static/js/main.js` | sha256 | truncate 12 `` }}" defer></script>
+</head>
+<body class="{{ if and .IsPage (eq .Section `posts`) }}article-page{{ end }}">
+  <a class="skip-link" href="#main">跳至正文</a>
+  {{ partial "header.html" . }}
+  <main id="main">{{ block "main" . }}{{ end }}</main>
+  {{ partial "footer.html" . }}
+  <a href="#top" class="back-top" aria-label="回到顶部">↑</a>
+  <dialog class="image-dialog" aria-label="查看原图"><button class="image-close" aria-label="关闭原图">×</button><img alt=""><p></p></dialog>
+</body>
+</html>

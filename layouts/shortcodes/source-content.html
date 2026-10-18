@@ -1,0 +1,2 @@
+{{- /* Prepared publication HTML, shared by original and translated editions. */ -}}
+{{ with .Page.Resources.GetMatch "body.html" }}{{ .Content | safeHTML }}{{ end }}

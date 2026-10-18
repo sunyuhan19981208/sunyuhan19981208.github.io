@@ -1,0 +1,10 @@
+{{- $page := . -}}
+{{- with .Params.counterpart -}}
+  {{- with site.GetPage (printf "/posts/%s" .) -}}
+    {{- $zh := $page -}}{{- $en := . -}}
+    {{- if eq $page.Params.language "en" -}}{{- $zh = . -}}{{- $en = $page -}}{{- end -}}
+    <nav class="version-switch" aria-label="文章语言 / Article language">
+      <a href="{{ $zh.RelPermalink }}" lang="zh-CN" hreflang="zh-CN"{{ if eq $page.RelPermalink $zh.RelPermalink }} aria-current="page"{{ end }}>中文</a><span aria-hidden="true">/</span><a href="{{ $en.RelPermalink }}" lang="en" hreflang="en"{{ if eq $page.RelPermalink $en.RelPermalink }} aria-current="page"{{ end }}>English</a>
+    </nav>
+  {{- end -}}
+{{- end -}}

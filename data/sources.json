@@ -1,0 +1,44 @@
+[
+  {
+    "slug": "llm-barrage-interaction",
+    "url": "https://mp.weixin.qq.com/s/93Nk6lpRpTqUaD-U8OAeEQ",
+    "version": null,
+    "retrieved": "2026-10-18",
+    "sha256": "1d9cf2e3eb5d21f3e7477a4557326a905b6ec2cc8bed3967aca9b1b4a0818883"
+  },
+  {
+    "slug": "llm-distillation-and-reasoning-compression",
+    "url": "https://mp.weixin.qq.com/s/pnn6jyudY7iv426hyO-WIw",
+    "version": null,
+    "retrieved": "2026-10-18",
+    "sha256": "1e1b66d6df9776fc880d61e81194a2c94da275e2f6da3ba375e35763132479e3"
+  },
+  {
+    "slug": "livethinking",
+    "url": "https://arxiv.org/abs/2510.07685",
+    "version": "v1",
+    "retrieved": "2026-10-18",
+    "sha256": "fd274de95ef8d3274839ed550fd23ab8b5a7a7c9d1d073d3f658858dc948d730"
+  },
+  {
+    "slug": "agenticrl",
+    "url": "https://mp.weixin.qq.com/s/7A3QbSMM6gxG9d1LpYDIPQ",
+    "version": null,
+    "retrieved": "2026-10-18",
+    "sha256": "d23af0ab27f861709f435aff7cc09fc68decec5eb6e067a89bb862aa8fe2e1ba"
+  },
+  {
+    "slug": "harness-aware-training",
+    "url": "https://arxiv.org/pdf/2608.15763",
+    "version": "v5",
+    "retrieved": "2026-10-18",
+    "sha256": "4d1e7efe55341d094e1102b7bca3eab0a1f971d0ec6ebf1266458bfc96fb207e"
+  },
+  {
+    "slug": "harness-aware-training-cn",
+    "url": "https://mp.weixin.qq.com/s/ajL2P5PY1HcQnJt_RFalnw",
+    "version": null,
+    "retrieved": "2026-10-18",
+    "sha256": "4d4e73bd96bda05c4a0bf3c37de7a3b4dbfbf7225361687cf31079c18b3ae6d2"
+  }
+]

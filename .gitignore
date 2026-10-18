@@ -1,0 +1,7 @@
+/public/
+/resources/
+/.hugo_build.lock
+/.tools/
+/.preview/
+*.log
+__pycache__/

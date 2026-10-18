@@ -1,0 +1,12 @@
+{{ $editorial := index site.Data.editorial .Params.slug }}
+<article class="post-card" lang="{{ .Params.language }}" data-kind="{{ if .Params.arxiv }}research{{ else }}practice{{ end }}">
+  <time class="entry-date" datetime="{{ .Date.Format `2006-01-02` }}"><span>{{ .Date.Format "01.02" }}</span><small>{{ .Date.Format "2006" }}</small></time>
+  <div class="entry-body">
+    <div class="post-meta"><span>{{ if .Params.arxiv }}研究笔记{{ else }}工程实践{{ end }}</span><span class="reading-time">{{ $editorial.minutes }} min read</span></div>
+    <h3><a href="{{ .RelPermalink }}">{{ $editorial.title }}</a></h3>
+    <p class="entry-description">{{ $editorial.summary }}</p>
+    {{ partial "language-switch.html" . }}
+    <div class="post-tags">{{ range .GetTerms "tags" }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}</div>
+  </div>
+  <a class="entry-open" href="{{ .RelPermalink }}" aria-label="阅读 {{ .Title }}"><span aria-hidden="true">↗</span></a>
+</article>

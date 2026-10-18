@@ -1,0 +1,26 @@
+{{ define "main" }}
+<div class="home-shell">
+  {{ $posts := where (where site.RegularPages "Section" "posts") "Params.secondaryVersion" "ne" true }}
+  {{ $papers := where $posts "Params.arxiv" "ne" nil }}
+  <section class="intro">
+    <div class="intro-main">
+      <p class="eyebrow">YUHAN SUN</p>
+      <h1 class="journal-title">y<span>'</span>log<span class="brand-period">.</span></h1>
+      <p class="intro-statement">LLM、强化学习<br>与数字人。</p>
+      <p class="intro-description">我是 Yuhan，写一些研究笔记和工程实践。</p>
+      <a class="intro-about" href="{{ `about/` | relURL }}">关于我 <span aria-hidden="true">↗</span></a>
+    </div>
+    <aside class="research-index" aria-label="研究方向">
+      <p class="eyebrow">AREAS OF INTEREST</p>
+      <a href="{{ `tags/llm/` | relURL }}"><span>01</span><div>大语言模型<small>Large language models</small></div><b aria-hidden="true">↗</b></a>
+      <a href="{{ `tags/reinforcement-learning/` | relURL }}"><span>02</span><div>强化学习<small>Reinforcement learning</small></div><b aria-hidden="true">↗</b></a>
+      <a href="{{ `tags/agents/` | relURL }}"><span>03</span><div>智能体系统<small>Agent systems</small></div><b aria-hidden="true">↗</b></a>
+    </aside>
+  </section>
+  <section aria-label="文章列表" class="posts-section">
+    <div class="section-topline"><h2>文章</h2><div class="filters" aria-label="按内容筛选"><button class="filter active" data-filter="all" aria-pressed="true">全部 <span>{{ printf "%02d" (len $posts) }}</span></button><button class="filter" data-filter="research" aria-pressed="false">研究 <span>{{ printf "%02d" (len $papers) }}</span></button><button class="filter" data-filter="practice" aria-pressed="false">实践 <span>{{ printf "%02d" (sub (len $posts) (len $papers)) }}</span></button></div></div>
+    <div class="post-list">{{ range $posts.ByDate.Reverse }}{{ partial "post-card.html" . }}{{ end }}</div>
+  </section>
+  <aside class="home-note"><a href="{{ `archives/` | relURL }}">全部归档 ↗</a></aside>
+</div>
+{{ end }}

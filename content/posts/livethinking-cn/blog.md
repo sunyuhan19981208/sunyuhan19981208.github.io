@@ -1,0 +1,56 @@
+大推理模型能把商品问题答得更准，但它们也会想得很久。直播间里，回复生成时话题可能已经过去了。
+
+LiveThinking 用两阶段训练处理这个问题：RFT 负责迁移推理能力，GRPO 负责让推理更短、更有用。
+
+## 蒸馏省了参数，没有自动省下思考
+
+教师模型是 670B 的 DeepSeek-R1，学生是 Qwen3-30B-A3B，推理时只激活 3B 参数。
+
+我们让教师为问题生成多条轨迹，用 LLM Judge 同时检查正确性和帮助性。每个输入最多保留一条通过筛选的结果；没有合格结果的输入直接丢弃，再做拒绝采样微调（RFT）。
+
+<figure class="ltx_figure publication-figure figure-landscape" id="S3.F2"><div class="figure-heading"><span class="figure-label">图 1</span><button aria-label="放大查看：图 1" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="两个阶段分别处理模型规模和推理长度。" decoding="async" height="860" loading="lazy" src="../livethinking/images/figure-dba803730aa0.png" width="1720"/>
+</div><figcaption class="ltx_caption ltx_centering publication-caption">两个阶段分别处理模型规模和推理长度。</figcaption></figure>
+
+相比直接 SFT，过滤轨迹对帮助性更有效。教师的每次输出并不都同样值得模仿。
+
+但学生也学会了教师冗长的推理习惯。模型变小了，输出却没有短多少：只做 RFT 时，每条回复约 353 tokens。
+
+## 给“短”划一个合适的范围
+
+第二阶段用 GRPO 联合优化三类奖励：
+
+- **正确性**：回复有商品信息依据，没有编造。
+- **帮助性**：除了答对，还能给出相关、实用的信息。
+- **长度**：落在目标区间内得分，过长和过短都要扣分。
+
+长度区间以 RFT 模型的输出为参考。这样做不是追求最短，而是防止两个极端：长篇重复，或者省掉必要推理。
+
+<figure class="ltx_figure publication-figure figure-landscape" id="S4.F3"><div class="figure-heading"><span class="figure-label">图 2</span><button aria-label="放大查看：图 2" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="长度奖励同时约束冗长和过度压缩。" decoding="async" height="574" loading="lazy" src="../livethinking/images/figure-6936a46bed58.png" width="814"/>
+</div><figcaption class="ltx_caption ltx_centering publication-caption">长度奖励同时约束冗长和过度压缩。</figcaption></figure>
+
+只优化正确性，模型容易变得保守；加上帮助性，才会更积极地利用已有信息。简洁性奖励也不只是省 token，它还能促使模型找到更直接的路径。
+
+## 两个阶段都有用
+
+在内部商品问答集上，Qwen3-30B-A3B 的消融结果如下：
+
+| 训练方式 | 正确性 | 帮助性 | 每条回复 tokens |
+| --- | ---: | ---: | ---: |
+| 基座模型 | 67.3% | 56.5% | 396 |
+| 只做 RFT | 81.3% | 77.0% | 353 |
+| 只做 RL | 87.5% | 90.0% | 152 |
+| RFT + RL | 92.3% | 96.8% | 153 |
+
+RFT 提供更好的起点，RL 再收紧推理，两者合用优于单独训练。最终模型也超过了教师在该集上的正确性 89.0% 和帮助性 75.0%。
+
+我们还在 MuSiQue 多跳问答集上验证了泛化：EM 从教师的 41.2 提到 53.5，F1 从 57.0 提到 67.2，回复从 807 缩短到 473 tokens。
+
+这里的帮助性由 Judge 评估。与人工标注对照时，Judge 的正确性判断准确率为 83%，帮助性为 84%，因此这些指标也需要结合人工与线上结果来看。
+
+## 部署后看什么
+
+2025 年 7 月，LiveThinking 替换了淘宝直播原有的 14B 稠密模型。论文报告计算成本降低约 30 倍，其中蒸馏贡献约 12 倍，路径压缩约 2.5 倍。
+
+线上下单转化率提升 59.0%，多轮对话用户占比提升 50.5%。这组对比的基线是原生产模型，不能和前面的教师模型对比混在一起理解。
+
+这项工作的核心经验是：**小模型不一定推理高效，长推理也不一定回答更好。** 蒸馏之后，仍然需要专门优化它怎么思考。

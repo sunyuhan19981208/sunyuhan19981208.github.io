@@ -1,0 +1,1 @@
+{{ define "main" }}{{ $posts := where .Pages "Params.secondaryVersion" "ne" true }}<div class="utility-shell"><p class="eyebrow">Y'LOG / COLLECTION</p><h1>{{ .Title }}</h1><p class="utility-description">{{ len $posts }} 篇文章 · 均含中英文版本</p>{{ range $posts.ByDate.Reverse }}{{ partial "post-card.html" . }}{{ end }}</div>{{ end }}

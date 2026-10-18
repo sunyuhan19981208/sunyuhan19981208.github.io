@@ -1,0 +1,42 @@
+[
+  {
+    "id": "llm-barrage-interaction",
+    "primary": "llm-barrage-interaction",
+    "versions": [
+      "llm-barrage-interaction",
+      "llm-barrage-interaction-en"
+    ]
+  },
+  {
+    "id": "llm-distillation-and-reasoning-compression",
+    "primary": "llm-distillation-and-reasoning-compression",
+    "versions": [
+      "llm-distillation-and-reasoning-compression",
+      "llm-distillation-and-reasoning-compression-en"
+    ]
+  },
+  {
+    "id": "livethinking",
+    "primary": "livethinking",
+    "versions": [
+      "livethinking",
+      "livethinking-cn"
+    ]
+  },
+  {
+    "id": "agenticrl",
+    "primary": "agenticrl",
+    "versions": [
+      "agenticrl",
+      "agenticrl-en"
+    ]
+  },
+  {
+    "id": "harness-aware-training",
+    "primary": "harness-aware-training",
+    "versions": [
+      "harness-aware-training",
+      "harness-aware-training-cn"
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+baseURL = 'https://sunyuhan19981208.github.io/'
+title = "y'log"
+languageCode = 'zh-CN'
+defaultContentLanguage = 'zh'
+hasCJKLanguage = true
+enableRobotsTXT = true
+enableGitInfo = false
+timeZone = 'Asia/Shanghai'
+
+[params]
+  author = 'Yuhan Sun'
+  description = 'Yuhan 的研究笔记：LLM、强化学习与数字人。'
+  github = 'https://github.com/sunyuhan19981208'
+
+[taxonomies]
+  tag = 'tags'
+
+[outputs]
+  home = ['HTML', 'RSS', 'JSON']
+
+[markup.goldmark.renderer]
+  unsafe = true
+[markup.tableOfContents]
+  startLevel = 2
+  endLevel = 3
+  ordered = false
+[markup.highlight]
+  noClasses = false
+  guessSyntax = true
+
+[sitemap]
+  changeFreq = 'monthly'
+  priority = 0.5

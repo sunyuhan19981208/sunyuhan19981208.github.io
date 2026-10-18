@@ -1,0 +1,9 @@
+{{- $entries := slice -}}
+{{- range where site.RegularPages "Section" "posts" -}}
+  {{- $article := . -}}
+  {{- $editorial := index site.Data.editorial .Params.slug -}}
+  {{- $body := .Plain -}}
+  {{- with .Resources.GetMatch "blog.md" -}}{{- $body = ($article.RenderString (dict "display" "block") .Content) | plainify -}}{{- end -}}
+  {{- $entries = $entries | append (dict "title" $editorial.title "description" $editorial.summary "url" .RelPermalink "date" (.Date.Format "2006.01.02") "tags" .Params.tags "content" $body "language" .Params.language "workId" .Params.workId) -}}
+{{- end -}}
+{{- $entries | jsonify -}}

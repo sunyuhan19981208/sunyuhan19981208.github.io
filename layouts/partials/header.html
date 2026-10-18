@@ -1,0 +1,15 @@
+<header class="site-header" id="top">
+  <div class="header-inner">
+    <a class="wordmark" href="{{ site.Home.RelPermalink }}" aria-label="y'log 首页">y<span>'</span>log<span class="brand-dot">.</span></a>
+    <div class="header-right">
+      <nav aria-label="主导航">
+        <a href="{{ site.Home.RelPermalink }}" {{ if or .IsHome (eq .Section `posts`) }}aria-current="page"{{ end }}>文章</a>
+        <a href="{{ `archives/` | relURL }}" {{ if eq .Layout `archives` }}aria-current="page"{{ end }}>归档</a>
+        <a href="{{ `tags/` | relURL }}" {{ if eq .Layout `tags` }}aria-current="page"{{ end }}>标签</a>
+        <a href="{{ `search/` | relURL }}" {{ if eq .Layout `search` }}aria-current="page"{{ end }}>搜索</a>
+        <a href="{{ `about/` | relURL }}" {{ if eq .Title `关于` }}aria-current="page"{{ end }}>关于</a>
+      </nav>
+      <button class="theme-toggle" aria-label="切换深浅色主题" title="切换深浅色主题"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg></button>
+    </div>
+  </div>
+</header>

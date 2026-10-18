@@ -1,0 +1,4 @@
+{{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>{{ site.Title }}</title><link>{{ site.Home.Permalink }}</link><description>{{ site.Params.description }}</description><language>zh-CN</language><atom:link href="{{ `index.xml` | absURL }}" rel="self" type="application/rss+xml"/>
+{{ range (where (where site.RegularPages "Section" "posts") "Params.secondaryVersion" "ne" true).ByDate.Reverse }}{{ $editorial := index site.Data.editorial .Params.slug }}<item><title>{{ $editorial.title }}</title><link>{{ .Permalink }}</link><guid>{{ .Permalink }}</guid><pubDate>{{ .Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate><description>{{ $editorial.summary }}</description></item>{{ end }}
+</channel></rss>
