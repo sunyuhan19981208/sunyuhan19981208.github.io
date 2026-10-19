@@ -8,11 +8,11 @@ A viewer asks for a toilet recommendation, then sends just two words: “smart t
 Fragments like this are common in livestreams. The system needs the viewer's history, the product currently on screen, and the live product list—not just the latest message.
 
 
-## Application Background
+## Text replies and spoken replies need different treatment
 
-Viewer comments are more than a text-input channel: they sustain engagement and improve the viewing experience. Good interaction balances entertainment, information delivery, and participation, improving livestream quality and commercial potential. We support two forms of real-time response: text in the comment area, and spoken answers generated through TTS with synchronized avatar lips. Because their resource and latency requirements differ, spoken responses are primarily offered in the more resource-rich flagship edition; other editions mainly use text replies. The following examples illustrate these interactions:
+We answer comments in two ways: text in the chat area, or TTS and lip synchronization so the avatar can speak. The inputs are similar, but resource cost, waiting time, and wording differ. Spoken replies mainly run in the more resource-intensive flagship version; other versions rely more on text. Before choosing how to present an answer, both need the same decision: what is the viewer asking, and which product evidence can answer it? This post follows that path through the system.
 
-## Interaction Architecture
+## What happens to one comment
 
 <!-- image:llm-barrage-interaction:images/figure-92603a48521c.png | The interaction workflow: intent and entities determine retrieval before response generation. -->
 
@@ -30,16 +30,16 @@ The interaction pipeline includes the following components:
 - Generation: place retrieved information, the comment, and dialogue history into task-specific prompts for the LLM. Templates cover casual chat, product questions, and promotion questions.
 - Presentation reordering: a product-presentation request changes the presentation order and receives a fixed response rather than an LLM-generated answer.
 
-## Multi-Turn Intent Recognition
+## Carrying intent across turns
 
-### Background and challenges
+### Let the next question build on the last
 
-Since December of the preceding year, we have been developing a multi-turn interaction LLM to improve conversations between viewers and hosts. We wanted to avoid losing viewer interest when brittle single-turn interactions reveal the host's AI identity. Two challenges emerged:
+We started focusing on multi-turn interaction in December 2024. Viewers routinely leave out the subject or continue an earlier question with only a few words. Treating each comment as a fresh request makes those conversations brittle. We needed to carry context forward without throwing away the single-turn data we had already collected.
 
 - Design a suitable multi-turn dialogue architecture and accumulate data to support the desired interaction quality.
 - Improve the existing intent model while reusing the substantial single-turn classification dataset and supporting new capabilities.
 
-We developed a multi-turn framework for digital-avatar livestreams and redefined the input/output format for intent recognition. The inputs now include system instructions, livestream product information, and viewer comments, and an LLM replaces BERT as the base model. Our model achieved 80% accuracy on the multi-turn task, versus 71% for DeepSeek-R1, and substantially outperformed BERT trained on the same data.
+We changed the input and the model together. Intent recognition now sees live-room products, history, and the comment; an LLM replaces BERT and emits the label. On this dataset, accuracy reached 80%, against 71% for DeepSeek-R1 and 69% for BERT trained on the same mixed data. The useful lesson for us was how much business labels and context helped with these boundaries.
 
 ### Multi-turn interaction architecture
 
@@ -58,7 +58,7 @@ The intent taxonomy changed twice:
 - July 2024: added product recommendations and livestream promotion questions.
 - January 2025: merged product recommendations and product searches into product questions.
 
-### Example interactions
+### Looking at actual conversations
 
 | Viewer comment | Dialogue history | Recognized intent | Avatar response |
 | --- | --- | --- | --- |
@@ -66,7 +66,7 @@ The intent taxonomy changed twice:
 | Which one connects through Bluetooth? | User: Does the lapel microphone need Bluetooth? Assistant: This lapel microphone connects through Bluetooth and is convenient to use. | Product question | Look at the Jinyun wireless Bluetooth headphones at link 6 or the in-ear model at link 11. Both use Bluetooth. |
 | Okay | User: How do I enter the draw? Assistant: Please ask customer service about the detailed draw rules. | Casual chat | Okay, good luck with the draw! |
 
-### Multi-turn intent model
+### Why we moved to an LLM with context
 
 <!-- image:llm-barrage-interaction:images/figure-c8b91623c77e.png | Moving from single-turn classification to an LLM with live-room context. -->
 
@@ -80,7 +80,7 @@ The intent taxonomy changed twice:
 3. Send the remaining examples to annotators.
 4. Algorithm engineers review annotations individually and remove examples humans cannot reliably interpret. The final dataset contains over 3000 multi-turn intent examples.
 
-### Experiments and case analysis
+### Scores and boundary cases
 
 | Method | Description | Accuracy |
 | --- | --- | --- |
@@ -92,9 +92,9 @@ The intent taxonomy changed twice:
 
 - Multi-turn labeling is much harder: determining the true intent may take 30–60 seconds per example.
 - The current product, viewer-specific dialogue history, and current comment provide sufficient information to identify intent.
-- Ambiguity is greater than in single-turn classification. Context can support either a link number or product keywords; a previously requested product may now be the current presentation. Some apparent classification errors can nevertheless lead to a correct answer downstream.
+- Context does not remove every ambiguity. A question can support a link ID or product keywords, and a previously discussed item may now be the current presentation. Several routes can retrieve enough evidence. We therefore inspect intent accuracy and the final reply separately: a routing error need not become an answer error.
 
-#### Successful cases
+#### Cases where context changes the route
 
 | Comment | Current product | Dialogue history | Single-turn intent | Multi-turn intent | Explanation |
 | --- | --- | --- | --- | --- | --- |
@@ -107,9 +107,9 @@ The intent taxonomy changed twice:
 - DeepSeek-R1 makes intent errors on broadly distributed, long-tail boundary cases that prompt tuning alone cannot resolve.
 - Data-driven SFT handles these cases and can improve further with more annotated production examples.
 
-### Reasoning experiment
+### More reasoning did not help this classifier
 
-To test whether R1's reasoning could benefit intent recognition, we asked it to generate chains of thought conditioned on the true intent labels and trained the LLM on these augmented examples.
+We also tried giving the intent model a reasoning trace. R1 generated a chain of thought conditioned on each known label, and we used those examples for fine-tuning. The question was whether this extra supervision would help the model make the same classification decision more reliably.
 
 | Method | Description | Accuracy |
 | --- | --- | --- |
@@ -119,7 +119,7 @@ To test whether R1's reasoning could benefit intent recognition, we asked it to 
 - Generated CoT diluted supervision on the true labels, performing worse than directly predicting the labels.
 - R1 annotation can work well in an open label space, but generating reasoning for examples with existing ground-truth labels did not meet expectations here.
 
-## Entity Parsing
+## Finding the product the viewer means
 
 The multi-turn product-entity parser extracts product names, attributes, and link numbers from dialogue history and recognized intent.
 
@@ -136,7 +136,7 @@ The core challenges include history dependence, numerical interference, and gene
 
 ### Training data
 
-We reuse the intent-recognition data, retaining product questions, product presentation requests, and their link-number variants. DeepSeek-R1, the most accurate model on the test set, combined with manual filtering yields 2100 high-quality multi-turn entity-parsing examples.
+For entity parsing, we kept product questions, presentation requests, and their link-ID variants from the intent data. DeepSeek-R1 generated parses, followed by manual filtering, leaving 2100 examples. Even with the strongest parser in this comparison, we checked whether historical products were still relevant.
 
 | Data component | Description |
 | --- | --- |
@@ -180,7 +180,7 @@ We manually annotate an initial product set, expand the pool with DeepSeek-R1, a
 
 #### Historical noise
 
-When the product in history conflicts with the current comment, the model can incorrectly favor the historical product. Adversarial examples improve robustness to the following issues:
+A clearly named historical product can override the item in the current comment. We built adversarial product pairs around the naming noise below, then generated conversations to test whether the parser could resist that pull.
 
 | Issue | Generation strategy | Example |
 | --- | --- | --- |
@@ -193,7 +193,7 @@ DeepSeek-R1 first generates product pairs exhibiting these issues, then generate
 
 <!-- image:llm-barrage-interaction:images/figure-ff72febd7e73.png | Constructing examples with historical noise and perturbed product names. -->
 
-### Experiments and examples
+### How we score a parse and inspect its errors
 
 Training: LoRA fine-tuning of a 7B base model.
 
@@ -216,17 +216,17 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 | What differs between links one and seven? | Viewer: Can 7 record audio? Host: The high-end tracker at link 7 can; ask customer service for details. Viewer: Does link seven need Wi-Fi? Host: A Wi-Fi version is available; customer service can explain setup. | Link-number product question | 1, 7 |
 | Difference | Viewer: Promotions for links 30 and 27. Host: Before ordering, open the product list at the bottom right and claim the shop coupon after entering the product page. | Link-number product question | 30, 27 |
 
-## Product Information Retrieval
+## Keeping retrieval tied to the live catalog
 
 <!-- image:llm-barrage-interaction:images/figure-a6c40beabfaa.png | Live catalog synchronization, semantic retrieval, and lexical ranking. -->
 
 - Before searching, synchronize with the live product list. Compute BERT context embeddings, add missing vectors, and remove vectors for products no longer available. Each vector corresponds to an `itemId`.
-- Compute a BERT query embedding and retrieve semantically similar products. Rerank using BM25 over product information and the comment, then apply combined lexical–semantic filtering. Return the final product-information list.
+- After catalog synchronization, BERT retrieves semantic candidates and BM25 adds a lexical check against product text and the comment. We combine both signals in the final filter. This helps short queries, where a category word or specification can matter more than overall embedding similarity.
 - Lexical reranking improves retrieval for short queries.
 
-## Response Generation
+## Turning evidence into a reply
 
-### Generation tasks
+### Different questions need different replies
 
 - Casual chat: respond using the conversation history and current comment.
 
@@ -250,7 +250,7 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 | How can I get the best price? | Before ordering, open the product list at the bottom right and claim the fan red packet after entering the product page. | Type: pre-purchase coupon; name: fan red packet; no minimum spend; discount: 4.0 yuan; fans only; claim by entering the product page. |
 | Are government subsidies still available? | Check the product list for a government-subsidy label and open the product to claim it. Policies vary by region. | — |
 
-### Interaction LLM training data
+### Where the response data comes from
 
 <!-- image:llm-barrage-interaction:images/figure-8b5a4b0b6530.png | Context differences between single-turn and multi-turn interaction. -->
 
@@ -273,7 +273,7 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 | Questions without an explicit subject | Multi-turn | 398 |
 | Total | All data | 8416 |
 
-### Distinguishing interaction modes
+### Saying the same thing in text and speech
 
 | Viewer comment | Text response | Spoken/TTS response |
 | --- | --- | --- |
@@ -293,13 +293,13 @@ The same underlying example may be seen twice during training, increasing the ri
 
 Our solution:
 
-- Split training and validation before generating mode variants. Otherwise two versions of the same example can leak across the split and invalidate validation: evaluation accuracy may exceed 95%, whereas a converged generative fine-tuning task more typically reaches 70–80%.
+- Split original conversations before making text and TTS variants. Otherwise, rewrites can leak across the split. We saw evaluation accuracy above 95% in this situation, versus roughly 70–80% when this generation task converged. Those are observations from this setup; unexpectedly good numbers should trigger a split audit first.
 - Adjust the learning rate from the learning curves and select the checkpoint with the lowest validation loss.
 
 ## Checks that matter in deployment
 
-Evaluate complete requests as well as individual modules. A correct intent can still lead to a wrong entity; a correct entity can still retrieve a stale catalog item. Preserve enough of the replay trace to identify the product and evidence behind the final answer.
+We pay particular attention to module handoffs. A correct intent can still produce a wrong entity, or the right entity can retrieve an unavailable item. Full-request replays sit alongside component scores so we can trace the reply back to its product and evidence.
 
-Split original conversations before augmentation. Paraphrases, numerical perturbations, and noisy-history variants of one source conversation should remain on the same side of the split. Otherwise the validation set can contain near-duplicates of training examples. An unusually high validation score deserves a data audit before another model experiment.
+Augmented versions of one conversation should stay together too: paraphrases, numerical perturbations, and noisy-history variants. When validation looks unexpectedly strong, we check construction and splitting before tuning again. Otherwise, an apparent model improvement may simply sit on top of a leaked baseline.
 
 The reported intent and entity accuracies describe these business datasets and scoring rules. They are not universal model rankings. Continually labeling real boundary cases remains a practical way to improve a deployed classifier.

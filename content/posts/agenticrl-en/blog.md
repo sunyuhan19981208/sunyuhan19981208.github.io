@@ -3,26 +3,26 @@ Our early interaction system followed intent recognition, retrieval, and generat
 We changed the system in two steps: let the model choose tools, then train tool use separately from response generation.
 
 
-## From Workflow to Agentic Interaction
+## Moving beyond a fixed workflow
 
-### Application scenario
+### The interaction we need to handle
 
 <figure class="publication-figure figure-landscape" id="blog-figure-1"><div class="figure-heading"><span class="figure-label">Figure 1</span><button aria-label="Enlarge Figure 1" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Digital avatars respond through text and synthesized speech." decoding="async" height="2072" loading="lazy" src="../agenticrl/images/figure-fba13ebfdc1f.png" width="1012"/></div><figcaption class="publication-caption">Digital avatars respond through text and synthesized speech.</figcaption></figure>
 
 - When viewers send comments in a digital-avatar livestream, the host replies through text and speech using product information and merchant-configured question–answer pairs.
 - Our algorithm controls these interactions, including what to say and whether to move a requested product forward in the presentation order.
 
-### Why the architecture needed to change
+### Where the fixed pipeline got stuck
 
-The original static intent-recognition–retrieval–generation workflow* had become a bottleneck as livestreaming requirements changed rapidly. Three limitations stood out:
+The fixed intent-recognition–retrieval–generation workflow was becoming hard to maintain as the live-room requirements changed. Three problems kept coming up:
 
 - Limited flexibility and slow iteration: adding one intent required two months of work involving manual annotation. Less than 2% of configured FAQs were used, making rapid business iteration difficult.
 - Weak context awareness and dead ends: the system could not connect product-list information, spoken scripts, and historical comments. After an intent error, it could not reflect or backtrack and instead mechanically referred viewers to customer service.
 - No concurrent scheduling: high-frequency comments from multiple viewers were difficult to process, and richer actions or expressive interactions were hard to add.
 
-Advances in agentic models created an opportunity to move from static workflows to contextual, reflective decision-making. A 30B MoE model deployed on one H20 already reached 140 tokens/s, and base-model tool-use capabilities had improved substantially. This made a more capable agentic digital avatar technically feasible.
+Model capability and serving cost made the migration worth trying. A 30B MoE model on one H20 could decode at 140 tokens/s, and base models were better at tools. We could now replace fixed branches with decisions based on current evidence. Latency and reply quality still needed their own work.
 
-### Architecture improvements
+### Let the model choose the next action
 
 The migration changed three parts of the system:
 
@@ -30,7 +30,7 @@ The migration changed three parts of the system:
 - Decision-making: one rigid classification → repeated, on-demand tool calls and reflective error correction.
 - Execution: a script for one intent → multimodal responses, including selecting images, reordering products, and incorporating the spoken script.
 
-The following sanitized trajectory illustrates the complete agent execution flow. The original Chinese prompts and tool data are retained as executable-format examples; actual retrieval results and subsequent steps were redacted in the source:
+Here is one interaction, simplified from the sanitized source. The host is presenting another item, so this question needs its own retrieval path:
 
 ```text
 Viewer: Which has better noise cancellation, Sony XM4 or XM5?
@@ -40,32 +40,30 @@ Context: the host is presenting a different product.
 3. Load the relevant reply rules, then produce the final response.
 ```
 
-The architectural benefits become clear when comparing actual viewer queries:
-
-- General improvements
+We compared how the two systems handled actual viewer queries:
 
 <figure class="publication-figure figure-landscape" id="blog-figure-2"><div class="figure-heading"><span class="figure-label">Figure 2</span><button aria-label="Enlarge Figure 2" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Comparing interaction behavior under Workflow and Agentic architectures." decoding="async" height="1048" loading="lazy" src="../agenticrl/images/figure-361c075313bd.png" width="1080"/></div><figcaption class="publication-caption">Comparing interaction behavior under Workflow and Agentic architectures.</figcaption></figure>
 
-- Livestream-specific improvements
+Two examples were especially useful in a live room:
 
-- Responding to multiple comments: adaptive, concurrent tool use and aggregation across information sources turn fragmented questions into one structured response. The agent can address different viewers' product questions together, including subsidy policies, gifts, and delivery times.
+- Answering several comments together: one viewer asks about subsidies, another about a gift, and a third about delivery. The agent fetches the missing evidence and combines the questions into one reply, instead of forcing every fragment through an independent fixed route.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-3"><div class="figure-heading"><span class="figure-label">Figure 3</span><button aria-label="Enlarge Figure 3" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Aggregating questions from several comments into one response." decoding="async" height="606" loading="lazy" src="../agenticrl/images/figure-72d67b403a61.png" width="1080"/></div><figcaption class="publication-caption">Aggregating questions from several comments into one response.</figcaption></figure>
 
-- Incorporating the spoken script: viewer questions are often closely tied to what the host is currently presenting. The flexible agentic architecture and global context awareness let the system incorporate the avatar's live script, understand the intended question more accurately, and give a more relevant answer.
+- Reading the spoken script as context: “this one” often refers to what the host just said, not merely the current catalog item. Adding the avatar’s live script gives the agent another way to resolve that reference and respond to follow-up questions without guessing from the product list alone.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-4"><div class="figure-heading"><span class="figure-label">Figure 4</span><button aria-label="Enlarge Figure 4" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Using the current presentation script as interaction context." decoding="async" height="571" loading="lazy" src="../agenticrl/images/figure-e059d6809841.png" width="1080"/></div><figcaption class="publication-caption">Using the current presentation script as interaction context.</figcaption></figure>
 
-### Model optimization: AgentTuning and RLVR
+### Bringing latency and answer quality into range
 
-We developed a model-optimization approach to meet strict latency requirements while improving correctness and helpfulness:
+Moving to an agent was only useful if it could reply quickly and reliably. We worked on those two constraints separately:
 
-- Reducing latency through AgentTuning distillation: a large teacher generates trajectories that are distilled into a compact 30B-A3B model. A single tool call takes 0.3 seconds, and decoding on one H20 reaches 140 tokens/s.
-- Reducing hallucination through response-model RLVR: domain-specific evaluation metrics and appropriate reward models encourage factually correct, helpful replies, reducing unsupported answers and promises during live commerce.
+- Latency first: a large teacher supplies trajectories for separate tool-use and response students. Generating a tool call takes about 0.3 seconds, with 140 tokens/s decoding on one H20. That makes a fast agent loop feasible; it is not the latency of a complete viewer interaction.
+- Then response quality: correctness and helpfulness rewards encourage replies grounded in tool evidence. We care especially about unsupported product facts and promises, including whether the model recognizes when it needs more information.
 
 #### AgentTuning distillation
 
-Multi-turn reflection adds reasoning overhead and creates a substantial latency challenge. AgentTuning distillation gives compact models planning, tool-use, and reflective decision-making capabilities approaching those of a much larger agent.
+Each extra reflection or tool round costs time in a live room. AgentTuning moves planning, tool selection, and reply behavior from teacher trajectories into smaller models, keeping useful decisions within our deployment budget.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-5"><div class="figure-heading"><span class="figure-label">Figure 5</span><button aria-label="Enlarge Figure 5" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Distilling tool use and final responses from teacher trajectories separately." decoding="async" height="603" loading="lazy" src="../agenticrl/images/figure-9a1f6e0128ef.png" width="1080"/></div><figcaption class="publication-caption">Distilling tool use and final responses from teacher trajectories separately.</figcaption></figure>
 
@@ -77,7 +75,7 @@ Multi-turn reflection adds reasoning overhead and creates a substantial latency 
 
 #### Response-model RLVR
 
-After AgentTuning, planning, tool use, and reflective decision-making are already strong, but supervised learning leaves room to improve factual correctness and helpfulness. Starting from the AgentTuning model, we train the response component with GRPO using correctness, helpfulness, and length rewards. Optimization acts directly on the final response to reduce hallucination and align preferences, producing an agent pipeline suitable for deployment.
+After distillation, the students could plan and call tools, but a final reply could still misread the evidence or make an unsupported promise. We continued from the AgentTuning checkpoint with GRPO on the response model. Several answers share the same tool-trajectory prefix; correctness, helpfulness, and length rewards then distinguish them. Correctness constrains the facts, helpfulness discourages evasive replies, and length limits unnecessary expansion.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-6"><div class="figure-heading"><span class="figure-label">Figure 6</span><button aria-label="Enlarge Figure 6" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="RLVR optimizes final responses from fixed tool-trajectory prefixes." decoding="async" height="603" loading="lazy" src="../agenticrl/images/figure-827d2e0e6f54.jpeg" width="1080"/></div><figcaption class="publication-caption">RLVR optimizes final responses from fixed tool-trajectory prefixes.</figcaption></figure>
 
@@ -88,7 +86,7 @@ After AgentTuning, planning, tool use, and reflective decision-making are alread
 - Minimize hallucination and answer according to tool results.
 - Include a helpfulness reward so that avoiding hallucination does not make the model excessively conservative or unresponsive to viewers' needs.
 
-**Implementation note:** We implement this algorithm in ROLL. Remove the final response from a teacher trajectory and retain `messages[:-1]` as the training prefix. `tokenizer.apply_chat_template` formats the messages; rollout generates only the final answer, and RLVR optimizes only that answer.
+**One implementation detail:** in ROLL, we keep the teacher’s `messages[:-1]` as the prefix and let rollout generate only the final reply. `tokenizer.apply_chat_template` prepares the input format. RLVR updates that generated reply, so we need to check which tokens are conditions and which belong in the loss before interpreting any reward curve.
 
 #### Evaluation metrics
 
@@ -102,9 +100,9 @@ We sanitize, filter, and clean production traffic to build the evaluation datase
 
 <figure class="publication-figure figure-landscape" id="blog-figure-8"><div class="figure-heading"><span class="figure-label">Figure 8</span><button aria-label="Enlarge Figure 8" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Offline response-quality comparison after architecture and model optimization." decoding="async" height="432" loading="lazy" src="../agenticrl/images/figure-4d714dc120d8.png" width="1080"/></div><figcaption class="publication-caption">Offline response-quality comparison after architecture and model optimization.</figcaption></figure>
 
-The agent substantially improves correctness and helpfulness relative to the workflow and also outperforms leading open and closed models, Gemini-2.5-pro and Qwen3-235B-A22B, on our interaction-response task. These results support the effectiveness of our optimization approach.
+On this interaction dataset, the agent improved correctness and helpfulness over the workflow and scored above the reported Gemini-2.5-pro and Qwen3-235B-A22B baselines. We read that result with its task, inputs, and calling setup attached.
 
-### Production results
+### What changed after deployment
 
 - Human comparison: replay production agent traffic through the workflow service and compare replies for identical inputs.
 
@@ -112,17 +110,17 @@ The agent substantially improves correctness and helpfulness relative to the wor
 
 - Latency comparison, measured in seconds:
 
-- The agentic architecture uses Instruct models throughout; the original workflow used a Thinking model for final response generation. Because upstream agent decisions already perform planning and tool selection, the final model does not need to compensate for unknown retrieval conditions as it did in the workflow.
+- The new chain uses Instruct models; the original workflow used a Thinking model for its final reply. The responsibilities changed as well. Planning and tool selection now happen upstream, so the response model can concentrate on organizing evidence already collected instead of compensating for every unknown in the earlier pipeline.
 - Together with previous latency optimizations, this substantially reduces both mean latency and the P99 tail.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-10"><div class="figure-heading"><span class="figure-label">Figure 10</span><button aria-label="Enlarge Figure 10" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Training the policy through multi-step tool interaction in a simulator." decoding="async" height="473" loading="lazy" src="../agenticrl/images/figure-03b1f72a6de6.png" width="1080"/></div><figcaption class="publication-caption">Training the policy through multi-step tool interaction in a simulator.</figcaption></figure>
 
-## Agentic RL in Practice
-### Background
+## Letting the student practice in the environment
+### What demonstrations still leave out
 
-The deployed agent in Chapter 2 learns tool calling through AgentTuning supervised distillation. Although effective, this approach fundamentally bounds the student's tool-use and intent-understanding abilities by the teacher. We therefore explore Agentic RL to train tool use inside a simulated environment and potentially surpass the teacher's ceiling.
+The deployed tool model learned from teacher trajectories, so the demonstrations still limited which paths it saw. We next tried letting the student call tools, observe consequences, and recover in a simulator. Agentic RL offered a way to learn from those interactions directly.
 
-### End-to-end Agentic RL
+### Trying RL over the complete interaction
 
 <figure class="publication-figure figure-landscape" id="blog-figure-11"><div class="figure-heading"><span class="figure-label">Figure 11</span><button aria-label="Enlarge Figure 11" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="The engineering path for rollouts, environment execution, and rewards." decoding="async" height="603" loading="lazy" src="../agenticrl/images/figure-df52e743cd22.jpeg" width="1080"/></div><figcaption class="publication-caption">The engineering path for rollouts, environment execution, and rewards.</figcaption></figure>
 
@@ -137,7 +135,7 @@ Training:
 2. Use the initial reference model for KL divergence; importance sampling follows the standard GRPO/PPO setup.
 3. Synchronize updated training parameters to the inference model and continue the next iteration. Tool use and response generation are optimized together.
 
-### Simulation environment and engineering
+### Connecting rollout workers to the sandbox
 
 In ROLL, the simulation architecture separates the training side from the remote sandbox:
 
@@ -146,31 +144,31 @@ In ROLL, the simulation architecture separates the training side from the remote
 
 The training and interaction loop has four key steps:
 
-- Step 1 — Initialize and connect: each rollout worker maps to an independent simulated environment. It requests a livestream environment from the simulation platform and retrieves initial data to prepare remote tools, including the semantic vector store.
+- First, prepare an environment for each rollout worker. It gets an independent simulated live room, retrieves initial state, and initializes remote tools, including the semantic vector store. The model and executor need to begin with the same task context.
 
-- Step 2 — Multi-turn rollout: the worker generates through an in-process vLLM or SGLang engine. After parsing a tool request, it contacts the sandbox over the network and receives the result. The model adapts its next action to feedback until the maximum number of turns or a designated rule tool, such as final-response retrieval, terminates the rollout.
+- Next, run the interaction loop. The worker generates through in-process vLLM or SGLang, parses a tool request, calls the remote sandbox, and feeds back the result. It continues until the turn limit or a terminal tool ends rollout. We retain the complete sequence.
 
-- Step 3 — Reward evaluation and processing: after rollout, internal LLM judges accessed through the cloud protocol evaluate the full interaction and return scalar rewards. The algorithm masks tool outputs, system prompts, and input tokens so that gradients act only on valid policy-generated tokens.
+- Then score and mask the trajectory. Internal LLM judges return episode rewards for the interaction. The loss mask excludes tool results, system messages, and inputs, leaving generated policy actions for optimization. Environment output belongs in the context, not in the policy loss.
 
-- Step 4 — Advantages and model updates: custom code returns processed token sequences, masks, and the episode score to ROLL. The framework calculates advantages and losses, uses Megatron for distributed optimization, and synchronizes new parameters to vLLM/SGLang, completing one iteration.
+- Finally, return sequences, masks, and episode scores to ROLL. It calculates advantages and losses, updates through Megatron, and synchronizes parameters to vLLM or SGLang. The next rollout must actually use the new policy for the iteration to be complete.
 
-**Implementation note:** ROLL's abstractions and extension points mean that implementing rollout, correctly masked sequences, and reward scoring is enough to run the basic Agentic RL loop. The masks from `tokenizer.apply_chat_template` may not meet task requirements; explicitly mask tokens that should not be trained.
+**Check the interface before the curve:** ROLL handles much of the training loop, while our code supplies rollout, the loss mask, and reward scoring. A chat template’s mask may not match the task’s mask. We check tool results and system messages explicitly rather than assume every message-shaped segment is a policy output.
 
-**Implementation note:** Early convergence was limited less by algorithm design than by environment stability and reward quality. An unstable simulator makes positive conclusions almost impossible. Rewards must distinguish genuinely good trajectories from bad ones; in practice, this is among the hardest and messiest parts of deployment.
+**The environment came before the algorithm:** early failures often came from an unstable simulator or a reward that could not distinguish useful trajectories. The first makes feedback hard to compare; the second gives the policy little direction. Both are tedious to debug, but they determine whether a training curve is worth interpreting.
 
-### Limitations and deployment challenges
+### Why the final reward was not enough
 
 Our initial end-to-end Agentic RL attempts did not produce a strong model, for several reasons:
 
 - Correctness and helpfulness rewards primarily evaluate the response model. They provide no clear feedback on agentic competence, and inappropriate credit assignment can make tool use worse.
 - Adding an LLM-judge tool-use reward gives some relevant feedback, but judge instability makes the reward noisier and convergence harder.
-- Tool use and response generation require different skills: tool use relies on contextual intent understanding, accurate calls, and reflection on results; response generation prioritizes low hallucination, satisfaction of the actual request, and natural expression.
+- Tool use needs contextual intent, correct interfaces and arguments, and decisions based on results. The reply needs factual grounding, relevance, and natural wording. A final-answer score can obscure these different responsibilities when assigned to every earlier action.
 
-## Multi-Agent Reinforcement Learning
+## Training tool use and replies separately
 
-Based on these observations, we separate tool calling and final response generation into two agents and jointly optimize them online with different rewards. This shifts optimization from one model to the whole system.
+We therefore split tool use and final replies into two agents, retain their shared environment, and assign distinct rewards. One learns to gather evidence, the other to use it; both see the effects of their partner’s changing behavior.
 
-### Joint optimization of the two agents
+### How the two agents learn together
 
 We explicitly divide the interaction system into a tool-calling model and a response/summarization model. During training, each optimizes only its own stage:
 
@@ -194,17 +192,17 @@ Training:
 3. Each model uses its own initial reference model for KL divergence. Importance sampling follows the basic GRPO/PPO setup.
 4. Synchronize parameters from the Megatron training models to the vLLM inference models and start the next iteration.
 
-**Implementation note:** In a correct implementation, Multi-Agent RL converges more readily than end-to-end Agentic RL, effectively dividing the latter into several subtasks closer to RLVR.
+**What we observed:** the two-agent version converged more readily on this task, with feedback closer to each model’s responsibility. That still depends on correct environments, masks, and rewards, not merely on using two models.
 
-**Implementation note:** The implementation closely resembles step-reward training. If model-parameter differences are set aside, a step-reward implementation can directly support Multi-Agent RL. ROLL already provides algorithms such as GiGPO.
+**Reusing step rewards:** their data flow is a useful starting point, with GiGPO already available in ROLL. With two parameter sets, each sequence, reward, and checkpoint still needs the right owner.
 
-**Implementation note:** Automatically uploading multiple models' checkpoints to OPENLM MOS is a challenge. We distinguish model checkpoints through `cluster_name` at the `ckpt_id` level and reuse ROLL's automatic MOS upload mechanism.
+**Two models also mean two checkpoints:** we use `cluster_name` at the `ckpt_id` level to distinguish their ownership, then reuse ROLL’s automatic OPENLM MOS upload path. Saving both sides of an iteration makes it possible to load and replay the same trained pair later.
 
 ### Reward design
 
 <figure class="publication-figure figure-landscape" id="blog-figure-14"><div class="figure-heading"><span class="figure-label">Figure 14</span><button aria-label="Enlarge Figure 14" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Training curves for Multi-Agent RL." decoding="async" height="555" loading="lazy" src="../agenticrl/images/figure-ccf4faac74d8.png" width="1080"/></div><figcaption class="publication-caption">Training curves for Multi-Agent RL.</figcaption></figure>
 
-### Training behavior
+### What we look for in the training curves
 
 <figure class="publication-figure figure-landscape" id="blog-figure-15"><div class="figure-heading"><span class="figure-label">Figure 15</span><button aria-label="Enlarge Figure 15" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Experimental response-quality and tool-rationality results." decoding="async" height="765" loading="lazy" src="../agenticrl/images/figure-266baeef002c.png" width="1080"/></div><figcaption class="publication-caption">Experimental response-quality and tool-rationality results.</figcaption></figure>
 
@@ -218,16 +216,16 @@ Mixed rewards make single-agent Agentic RL difficult to improve or converge. Sep
 - Factual correctness and response helpfulness evaluate the final answer. Scoring tool competence from whether the final answer hallucinates is inappropriate.
 - Tool-call rationality measures the tool model and should not be used to grade final response generation.
 
-### Experimental results*
+### Comparing with the supervised version
 
 <figure class="publication-figure figure-landscape" id="blog-figure-16"><div class="figure-heading"><span class="figure-label">Figure 16</span><button aria-label="Enlarge Figure 16" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Ablations of joint multi-agent training." decoding="async" height="474" loading="lazy" src="../agenticrl/images/figure-bb193e83747b.png" width="1080"/></div><figcaption class="publication-caption">Ablations of joint multi-agent training.</figcaption></figure>
 
-- *This experiment was designed independently of the earlier architecture experiment. The main changes are improved factual-correctness and helpfulness judges and a stronger distillation teacher, GLM 4.7.
+- This experiment was run separately from the earlier architecture comparison. We updated the factual-correctness and helpfulness judges and used a stronger distillation teacher, GLM 4.7.
 - We also evaluate tool-call rationality separately to monitor tool competence, addressing the earlier problem of optimizing only the final answer while tool use deteriorated.
 
-The method trains two models. Relative to SFT, the response model improves factual correctness by 4.1 points and helpfulness by 23.6 points; the tool model improves tool-call rationality by 18.2 points, improving the overall system.
+Relative to the SFT baseline in this experiment, the response model gained 4.1 points in correctness and 23.6 in helpfulness; the tool model gained 18.2 points in tool rationality. These are improvements in the two parts of the trained system, read under the experiment’s own teacher and Judge setup.
 
-### Ablation study
+### Where the gains come from
 
 <figure class="publication-figure figure-landscape" id="blog-figure-17"><div class="figure-heading"><span class="figure-label">Figure 17</span><button aria-label="Enlarge Figure 17" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Comparison of training and reward configurations." decoding="async" height="236" loading="lazy" src="../agenticrl/images/figure-087efade9246.png" width="1080"/></div><figcaption class="publication-caption">Comparison of training and reward configurations.</figcaption></figure>
 
