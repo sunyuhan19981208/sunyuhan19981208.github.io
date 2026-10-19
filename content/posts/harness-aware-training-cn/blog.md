@@ -15,11 +15,11 @@ Harness-Aware Training（HAT）要解决的，就是这种“上线后环境一�
 - 执行运营策略（调整讲品顺序、触发优惠话术、处理售后问题等）；
 - 公开口播到整个直播间（回复会通过 TTS 合成为语音，由数字人公开说出）；
 
-从系统链路看，互动 Agent 接在弹幕输入和口播输出之间。它先结合直播间上下文理解问题，再用业务工具找资料，按 SOP 组织回复，之后才交给 TTS 和数字人渲染播出。同一时段如果有多条弹幕，也可以合成一个请求处理。我们这里主要讨论的，就是这段从“收到观众的话”到“产出可公开回复”的过程：信息要找对，规则要遵守，还不能让观众等太久。
+互动 Agent 位于弹幕输入与口播输出之间：结合上下文理解问题，调用业务工具找资料，按 SOP 生成回复，再交给 TTS 和数字人渲染。同一时段的多条弹幕也可合成一个请求。这里讨论的是收到观众消息到产出公开回复的这一段，需要同时满足信息准确、规则遵循和低延迟。
 
 数字人主播的每次回复是面向整个直播间的公开发言，这意味着一次错误回复（比如虚假承诺、价格错误）可能引发客诉。这对算法的准确性要求极高。
 
-最难协调的两件事，是运行规则改得快，而模型训练跟不上。通用大模型往往更能读懂新配置，但延迟较高；小模型容易部署，却可能在微调后只熟悉训练时那一版 Harness。所以我们希望保住小模型的速度，同时让它学会读取当前的规则，而不是每改一次配置就必须重新训练。
+业务规则更新快，模型训练往往跟不上。通用大模型更能读懂新配置，但延迟高；小模型便于部署，微调后却可能只熟悉训练时的 Harness。我们希望保留小模型的速度，让它按当前规则执行，减少配置变动后重新训练的需要。
 
 ## 先迭代运行环境，再讨论训练
 
@@ -33,7 +33,7 @@ Harness-Aware Training（HAT）要解决的，就是这种“上线后环境一�
 
 <figure class="publication-figure figure-landscape" id="blog-figure-3"><div class="figure-heading"><span class="figure-label">图 3</span><button aria-label="放大查看：图 3" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="Skills、Tools、Prompt Pipeline 与 Hooks 的职责。" decoding="async" height="633" loading="lazy" src="../harness-aware-training-cn/images/figure-8d63760cf7b9.png" width="1080"/></div><figcaption class="publication-caption">Skills、Tools、Prompt Pipeline 与 Hooks 的职责。</figcaption></figure>
 
-我们把这四个模块与模型权重分开做版本管理。改一条 Skill，或增加一个 Hook，都可以先改运行配置，再回归检查，不必立刻重训模型。Skill 本身是 Markdown 模块，带描述，完整内容按需加载；最终回复前必须至少加载一个 Reply Skill，Strategy Skill 则按需要组织特定的工具链。这个约束让模型在回答前能拿到相应规则，也让开发者更容易检查：这次回复究竟依据了哪一版策略。
+四个模块与模型权重分别做版本管理。修改 Skill 或新增 Hook 后，可以先回归运行配置，不必立即重训。Skill 是带描述的 Markdown 模块，完整内容按需加载。最终回复前至少加载一个 Reply Skill；需要特定工具链时再加载 Strategy Skill。规则加载有明确记录，开发者也能查到回复使用了哪一版策略。
 
 ### 一次请求怎么走完
 
@@ -80,9 +80,9 @@ Diagnose → Confirm → Edit Harness → Evaluate → Regression Check
 
 先看固定权重的结果：Baseline 的准确性 / 有效性为 82.40 / 87.16，Evolution 2 达到 92.55 / 92.75，分别提高 10.15 / 5.59 个百分点。这段没有更新模型，改的是 Skills、提示词、Hooks 和工具配置。
 
-继续改下去，分数却没一直升。Evolution 3–4 的长尾修复在 Skills、Hooks 和全局指令之间引入新的影响，两项指标都出现回退。修好一个案例，不代表整体更好，这也是我们把早停和回归检查放进每轮编辑的原因。
+Evolution 3–4 继续修长尾问题，Skills、Hooks 与全局指令之间却引入相互影响，两项指标都回退了。因此，每轮编辑都需要回归检查，并在继续修复已无整体收益时早停。
 
-**实践提醒：**
+固定权重迭代时，需要注意：
 
 - Harness Evolution非单调性：更多规则不一定更好，长尾 fix 容易引发跨类别回归；
 - 早停很重要：当剩余 bad case 都是稀疏长尾时，继续加规则的边际收益为负；
@@ -93,7 +93,7 @@ Diagnose → Confirm → Edit Harness → Evaluate → Regression Check
 
 ### 配置改了，模型为什么跟不上
 
-配置可以持续改，问题也随之变了：只在一版 Harness 上做 Fixed-Harness SFT，模型可能把这版配置的表面形式学得很熟，却没有真正学会读取环境。我们在排查时尤其关注下面几种依赖：
+只在一版 Harness 上做 Fixed-Harness SFT，模型可能记住配置的写法，而未学会读取环境。排查时关注几种依赖：
 
 - 记住特定 Skill 名称，而不是理解 Skill 的语义；
 - 根据熟悉的 schema 字符串选择工具，而不是读取工具描述；
@@ -105,7 +105,7 @@ Diagnose → Confirm → Edit Harness → Evaluate → Regression Check
 
 这次 Fixed-Harness SFT 虽然提高了业务指标，通用指令遵循和 Prompt 鲁棒性却下降了。模型要适应新的 Harness，又离不开这两种能力。
 
-HAT 的做法，就是把这些配置变化提前放进训练。模型不只见同一套 Skill 名称、工具描述和提示词布局，而是要在多个 Harness 状态下完成相同业务任务。我们希望它学到的是“当前规则要求什么”，这样运行环境更新后，才更有机会直接跟上变化。
+HAT 把配置变化放进训练。同一个业务任务在不同 Skill 名称、工具描述和提示词布局下出现，要求模型读取当前规则，以适应部署后的环境更新。
 
 ### 让模型少认名字，多读规则
 
@@ -113,7 +113,7 @@ HAT 的做法，就是把这些配置变化提前放进训练。模型不只见�
 
 左侧为 Harness State Augmentation示例；右侧为RL/RFT 示意图
 
-我们把这一步叫 Harness-State Augmentation（HSA）。单一配置容易给模型留下捷径：看到熟悉的字符串，就沿用某个动作，不再认真读它的含义。HSA 沿五个维度改变 Harness 的表达和组织方式，让这些表面线索不再总是可靠。增强时又必须保住任务语义，否则得到的只是一个被改坏的环境，无法用来训练模型适应真实更新。
+Harness-State Augmentation（HSA）沿五个维度改变 Harness 的表达与组织方式，减少模型对固定字符串的依赖。增强后仍需保留任务语义，才能训练模型适应真实更新；若环境本身被改坏，样本就失去了这个作用。
 
 <figure class="publication-figure figure-landscape" id="blog-figure-7"><div class="figure-heading"><span class="figure-label">图 7</span><button aria-label="放大查看：图 7" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="HSA 覆盖的五类运行环境扰动。" decoding="async" height="929" loading="lazy" src="../harness-aware-training-cn/images/figure-761d4a0a132c.png" width="1080"/></div><figcaption class="publication-caption">HSA 覆盖的五类运行环境扰动。</figcaption></figure>
 
@@ -147,13 +147,13 @@ Domain-specific SFT（即便是 HSA-SFT）仍可能侵蚀通用能力。为了�
 
 直觉解释：让学生模型在通用任务上"回忆"起它作为基座模型时的能力。
 
-General OPD 在 Fixed-Harness SFT 后恢复了 8.5 分 IFEval，在 HSA-SFT 后只再增加 0.2 分。我们把它理解为两步分工：HSA-SFT 先少丢一些能力，OPD 再补回残余损失。恢复幅度小，也可能是前一步保留得更好。
+General OPD 在 Fixed-Harness SFT 后恢复了 8.5 分 IFEval，在 HSA-SFT 后增加 0.2 分。这与 HSA-SFT 先保留通用能力、OPD 再恢复残余损失的分工相符。OPD 增幅较小，也可能因为前一步保留得更多。
 
 #### 第三步：HSA-RL，自己进环境练习
 
 <figure class="publication-figure figure-landscape" id="blog-figure-8"><div class="figure-heading"><span class="figure-label">图 8</span><button aria-label="放大查看：图 8" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="HSA-RL 在工具调用段与回复段分别分配奖励。" decoding="async" height="732" loading="lazy" src="../harness-aware-training-cn/images/figure-0dc59e2b40bc.png" width="1080"/></div><figcaption class="publication-caption">HSA-RL 在工具调用段与回复段分别分配奖励。</figcaption></figure>
 
-接着，我们从 HSA-SFT + General OPD 的 checkpoint 出发，让学生自己进仿真环境交互。监督数据能覆盖多种配置，但主要展示的是教师走通的路径；真实部署时，学生会选错 Skill、碰到工具异常，也可能被 Hook 拦下要求修改。这些过程不能只靠最后一条正确答案解释。HSA-RL 让模型看到自己的动作会带来什么反馈，再学习如何继续、如何纠错，同时继续接触变化后的 Harness。
+HSA-RL 从 HSA-SFT + General OPD checkpoint 开始，让学生在仿真环境里交互。监督数据覆盖了多种配置，但主要是教师的成功路径；学生部署时还会选错 Skill、遇到工具异常或被 Hook 要求重试。RL 让这些动作和反馈进入训练，学习继续执行与错误恢复，同时接触变化后的 Harness。
 
 RL 训练设计：
 
@@ -174,7 +174,7 @@ RL 训练设计：
 - 工具执行仿真：工具调用在沙盒化的服务器上执行，返回通过日志还原的真实的商品详情、价格和库存信息。同时注入受控故障（超时、格式错误、权限拒绝）以暴露模型于错误恢复场景。
 - 增强 Harness 配置：环境在增强的 Harness 状态下运行，从而模拟出 Harness 变化的场景。
 
-**实践提醒：**
+训练与仿真需要配合：
 
 1. 三阶段各司其职：HSA-SFT 建立 Harness 鲁棒性，OPD修复通用能力，HSA-RL强化真实交互；
 2. 仿真环境的故障注入很关键：没有错误恢复经验的模型，线上遇到工具异常时更难恢复；
@@ -202,7 +202,7 @@ RL 训练设计：
 
 <figure class="publication-figure figure-landscape" id="blog-figure-10"><div class="figure-heading"><span class="figure-label">图 10</span><button aria-label="放大查看：图 10" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="Judge 与人工标注的一致率随校准迭代提高。" decoding="async" height="496" loading="lazy" src="../harness-aware-training-cn/images/figure-55b4328e73ac.png" width="1036"/></div><figcaption class="publication-caption">Judge 与人工标注的一致率随校准迭代提高。</figcaption></figure>
 
-评测也采用带 Harness 的 Judge Agent：Skills 写规则，Tools 查商品依据，Hooks 约束流程。我们分析它与人工的分歧，再修改评分和取证方式，最终由 3 个模型投票。6 轮迭代后，Accuracy 一致率从 81.54% 到 90.46%，Effectiveness 从 63.70% 到 82.2%。这里测的是评审与人工是否一致，不是被评模型的回答准确率。
+Judge Agent 用 Skills 写评分规则、Tools 查商品依据、Hooks 约束流程。我们根据它与人工的分歧修改评分和取证方式，最终由 3 个模型投票。6 轮后，Accuracy 一致率从 81.54% 升至 90.46%，Effectiveness 从 63.70% 升至 82.2%。这两项衡量 Judge 与人工的一致程度，不是被评模型的回答准确率。
 
 校准过程：
 
@@ -210,7 +210,7 @@ RL 训练设计：
 2. 使用标注后数据自动校准 Agent-as-a-Judge；
 3. 最终配置：Accuracy 一致率 90.46%，Effectiveness 一致率 82.2%。
 
-**我们校准评测时，主要检查三件事：**
+Judge 校准中需要检查：
 
 1. 评测 Judge 也需要迭代 Harness。我们做了 6 轮 Judge Evolution，Accuracy 一致率才超过 90%；
 2. Judge 的角色、数据与配置应单独记录，并检查训练奖励与最终评测之间的依赖；
@@ -230,13 +230,13 @@ RL 训练设计：
 
 <figure class="publication-figure figure-landscape" id="blog-figure-12"><div class="figure-heading"><span class="figure-label">图 12</span><button aria-label="放大查看：图 12" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="合成场景中的工具和提示词鲁棒性。" decoding="async" height="532" loading="lazy" src="../harness-aware-training-cn/images/figure-1cf4ed652a6f.png" width="904"/></div><figcaption class="publication-caption">合成场景中的工具和提示词鲁棒性。</figcaption></figure>
 
-T3 合成场景提供了另一个视角：Fixed-Harness SFT 在 Prompt Robustness 子集上比基座低 4.6 分。业务集上进步，提示词变化后却更容易错，这两件事可以同时发生。
+T3 的 Prompt Robustness 子集上，Fixed-Harness SFT 比基座低 4.6 分。业务指标改善的同时，模型对提示词变化的适应能力可能下降。
 
 ### 把训练阶段拆开看
 
 <figure class="publication-figure figure-landscape" id="blog-figure-13"><div class="figure-heading"><span class="figure-label">图 13</span><button aria-label="放大查看：图 13" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="HSA、General OPD 与 RL 的阶段消融。" decoding="async" height="779" loading="lazy" src="../harness-aware-training-cn/images/figure-ddf46a65f883.png" width="1080"/></div><figcaption class="publication-caption">HSA、General OPD 与 RL 的阶段消融。</figcaption></figure>
 
-**实践提醒：**
+各训练阶段的作用：
 
 1. 固定环境微调容易产生过拟合导致泛化变差，用 Harness 增强（HSA）微调能兼顾任务性能和泛化能力；
 2. General OPD能恢复 SFT 训练后灾难性遗忘导致的基础能力退化，HSA能提前防止泛化退化，这俩方法组合起来整体效果最好；
@@ -246,21 +246,21 @@ T3 合成场景提供了另一个视角：Fixed-Harness SFT 在 Prompt Robustnes
 
 <figure class="publication-figure figure-landscape" id="blog-figure-14"><div class="figure-heading"><span class="figure-label">图 14</span><button aria-label="放大查看：图 14" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="Harness 更新后，两类模型对新规则的遵循差异。" decoding="async" height="551" loading="lazy" src="../harness-aware-training-cn/images/figure-e88ed0f7d182.png" width="1080"/></div><figcaption class="publication-caption">Harness 更新后，两类模型对新规则的遵循差异。</figcaption></figure>
 
-我们还想知道，真实业务里改完 Harness，模型能不能直接受益。为此，从线上新流量里抽取 1，500 条样本，分成 500 条开发和 1，000 条测试。我们只在开发集上诊断错误、修改 Harness，再把编辑后的配置接到两个模型上，用留出的测试集比较。这样，修规则时看到的案例与最后判效果的案例是分开的。
+我们从线上新流量取 1，500 条样本，分为 500 条开发与 1，000 条测试。在开发集上诊断并修改 Harness，将相同修改用于两个模型，再用留出的测试集比较。编辑和判效果使用不同案例，以检查真实业务更新能否让模型受益。
 
 <figure class="publication-figure figure-natural" id="blog-figure-15"><div class="figure-heading"><span class="figure-label">图 15</span><button aria-label="放大查看：图 15" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="独立留出流量上的 Harness 编辑效果。" decoding="async" height="307" loading="lazy" src="../harness-aware-training-cn/images/figure-3e236796f3f6.png" width="510"/></div><figcaption class="publication-caption">独立留出流量上的 Harness 编辑效果。</figcaption></figure>
 
-这组留出测试中，HAT 的错误减少率接近 Fixed-Harness SFT 的 3 倍。同一次 Harness 编辑，模型能读懂多少，决定了修复能生效多少；结果仍然需要连同编辑范围和测试分布一起理解。
+留出测试中，HAT 的错误减少率接近 Fixed-Harness SFT 的 3 倍。同一处 Harness 修改，两个模型的遵循程度不同；这一结果对应本次编辑范围与测试分布。
 
 ### 部署时，再省掉一部分生成开销
 
-部署时，我们在单张 H20 上使用 Multi-Token Prediction（MTP）减少解码开销。NextN 头先提出后续多个 token 的草稿，推理引擎再沿 EAGLE-style 的投机解码路径验证和接受。它能节省多少，取决于草稿是否贴合主模型；仅仅打开 MTP，并不能保证完整 Agent 链路就会变快。
+单张 H20 部署使用 MTP 减少解码开销。NextN 头提出多个后续 token，推理引擎沿 EAGLE-style 投机解码路径验证、接受。收益取决于草稿与主模型的匹配程度，完整 Agent 链路仍需另外测时。
 
 MTP 训练：
 
 <figure class="publication-figure figure-landscape" id="blog-figure-16"><div class="figure-heading"><span class="figure-label">图 16</span><button aria-label="放大查看：图 16" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="领域适配过程中的 MTP 训练损失。" decoding="async" height="418" loading="lazy" src="../harness-aware-training-cn/images/figure-10d584cdba00.png" width="1080"/></div><figcaption class="publication-caption">领域适配过程中的 MTP 训练损失。</figcaption></figure>
 
-我们把 MTP 适配接到 RL 阶段：主模型从前两阶段的 checkpoint 出发，MTP 头由 Qwen3.6-35B-A3B 初始化，以 standalone 方式训练。蓝线是嫁接头的 loss，绿线是原生基座在同样配置下的 loss。Rollout 序列让草稿头逐渐适应主模型分布；真正部署前，仍要测接受率、质量与完整链路耗时。
+MTP 适配放在 RL 阶段：主模型从前两阶段 checkpoint 开始，MTP 头由 Qwen3.6-35B-A3B 初始化，以 standalone 方式训练。蓝线是嫁接头 loss，绿线是原生基座在同配置下的 loss。Rollout 序列用于适应主模型分布，部署前再检查接受率、质量与完整链路耗时。
 
 加速效果（Concurrency=1，单 H20）：
 
@@ -272,7 +272,7 @@ MTP 训练：
 - MTP 是低并发优化：并发线程数=1-2 效果显著，并发线程数=4-8 加速降到 1.27×/1.19×；
 - 开启 MTP 后质量无损失，略微上升基本为波动；
 
-**实践提醒：**
+MTP 的适配和部署：
 
 1. 任务训练会改变输出分布，未适配的 MTP 头可能失效；需要实际检查草稿接受率，并进行领域适配；
 2. 开启 MTP 后质量无损失，略微上升基本为波动；
@@ -283,7 +283,7 @@ MTP 训练：
 
 <figure class="publication-figure figure-landscape" id="blog-figure-18"><div class="figure-heading"><span class="figure-label">图 18</span><button aria-label="放大查看：图 18" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="分别压缩工具调用与最终回复的推理长度。" decoding="async" height="680" loading="lazy" src="../harness-aware-training-cn/images/figure-0b71fe855fd5.png" width="976"/></div><figcaption class="publication-caption">分别压缩工具调用与最终回复的推理长度。</figcaption></figure>
 
-我们同时约束了工具调用段与回复段的 CoT 长度，避免训练奖励提高了，推理却越来越长。这条 RL 轨迹里，工具调用 CoT 从 290.6 tokens 降到 171.2，回复 CoT 从 93.6 降到 37.0。两段分别看很有必要：前者省下的是决策中的生成量，后者省下的是组织最终回答时的生成量，不能只用一个总长度把变化混在一起。
+我们分别约束工具调用与回复段的 CoT，避免 RL 训练后推理越来越长。这次训练中，工具调用 CoT 从 290.6 tokens 降至 171.2，回复 CoT 从 93.6 降至 37.0。分别记录能看出生成量省在决策还是回复组织阶段，总长度无法区分这两种变化。
 
 ### 最后看完整链路的延迟
 
@@ -291,14 +291,14 @@ MTP 训练：
 
 <figure class="publication-figure figure-landscape" id="blog-figure-19"><div class="figure-heading"><span class="figure-label">图 19</span><button aria-label="放大查看：图 19" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="完整 Agent 链路的部署延迟对比。" decoding="async" height="345" loading="lazy" src="../harness-aware-training-cn/images/figure-50fa756e2cd5.png" width="1080"/></div><figcaption class="publication-caption">完整 Agent 链路的部署延迟对比。</figcaption></figure>
 
-完整回放里，HAT 在单张 H20 上的端到端中位延迟约为 3.4 秒，P95 约为 8.1 秒。作为对照，百炼 API 的 DeepSeek-V4 系列在这批请求中有 29%–39% 超过 15 秒。领域适配后的 MTP 草稿接受率为 78%，原生模型为 73.5%，对应解码速度为 271 与 216 tokens/s。这里既有模型选择，也有推理配置的影响，所以我们把完整链路耗时与草稿头诊断分开记录，不把某一个吞吐数字直接当成线上体验。
+完整回放中，单张 H20 的 HAT 端到端中位延迟约 3.4 秒，P95 约 8.1 秒。百炼 API 的 DeepSeek-V4 系列在同批请求中有 29%–39% 超过 15 秒。领域适配后的 MTP 草稿接受率为 78%，原生模型为 73.5%，解码速度分别为 271 和 216 tokens/s。模型与推理配置都影响结果，因此完整链路耗时和草稿头指标分别记录，吞吐量不能直接代表观众等待时间。
 
 ## 这些结果能说明什么
 
-“改了 Harness 还能用”应当在独立数据上验证。我们将新流量中的 1，500 条样本分成 500 条开发与 1，000 条测试：只在开发集上诊断和编辑 Harness，再在留出的测试集比较错误变化。固定 Harness 微调模型的错误减少 18.1%，HAT 模型减少 51.7%。这支持了对指定变化范围的适应能力，而非对任意工具或任意新业务的保证。
+独立数据上的 Harness 编辑测试使用 1，500 条新样本，其中 500 条开发、1，000 条测试，测试集不参与诊断和修改。固定 Harness 微调模型错误减少 18.1%，HAT 减少 51.7%。这验证了模型对指定变化范围的适应能力，任意新工具或新业务仍需另测。
 
-英文技术报告的更新版本还补充了人工盲测和线上 A/B。100 条成对请求里，64 条没有明确偏好，35 条偏好 Harness、1 条偏好 ReAct；97.2% 是 36 条非平局样本中的胜率，不能写成全部请求的胜率。线上实验按参与 UV 归一化后，商品详情页浏览量提升约 0.91%，它描述的是业务参与指标，也不能直接换算成成交提升。
+英文报告更新版补充了人工盲测和线上 A/B。100 条成对请求中，64 条无明确偏好、35 条偏好 Harness、1 条偏好 ReAct。97.2% 胜率的分母是 36 条非平局样本。线上商品详情页浏览量按参与 UV 归一化后提高约 0.91%，这是业务参与指标，不是成交提升。
 
-部署结果同样有边界。P50 3.407 秒、P95 8.114 秒来自指定 H20 与 MTP 配置的低并发完整链路回放；高并发下的投机解码收益会减弱。评测记录应绑定模型 checkpoint、Harness 版本、工具配置与推理参数，否则后续难以复现某次收益来自哪里。
+P50 3.407 秒、P95 8.114 秒来自指定 H20、MTP 配置和低并发完整回放，高并发时投机解码收益会减弱。复现还需要模型 checkpoint、Harness 版本、工具配置和推理参数，才能追查各项收益来自哪里。
 
-对我们来说，这项工作的主线是让系统迭代与模型训练相互配合：Harness 负责把业务变化表达清楚，HSA 负责让模型在训练中见到这种变化，评测与回放负责判断改动是否真的有效。保留这条闭环，比不断堆叠新规则更重要。
+系统迭代与模型训练需要配合：Harness 表达业务规则，HSA 让模型在训练中适应规则变化，评测和回放检查实际效果。新增规则也要经过这套检查，不能只修好当前案例就继续堆叠。

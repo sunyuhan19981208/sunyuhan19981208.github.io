@@ -5,7 +5,7 @@ Fragments like this are common in livestreams. The system needs the viewer's his
 
 ## Text replies and spoken replies need different treatment
 
-We answer comments in two ways: text in the chat area, or TTS and lip synchronization so the avatar can speak. The inputs are similar, but resource cost, waiting time, and wording differ. Spoken replies mainly run in the more resource-intensive flagship version; other versions rely more on text. Before choosing how to present an answer, both need the same decision: what is the viewer asking, and which product evidence can answer it? This post follows that path through the system.
+Replies appear as chat text or pass through TTS and lip synchronization for the avatar to speak. The questions are similar, but cost, waiting time, and wording differ. Speech runs mainly in the flagship version, which has more resources; other versions rely more on text. Both modes first need to identify the viewer’s question and retrieve supporting product information before generating a reply.
 
 ## What happens to one comment
 
@@ -29,12 +29,12 @@ The interaction pipeline includes the following components:
 
 ### Let the next question build on the last
 
-We started focusing on multi-turn interaction in December 2024. Viewers routinely leave out the subject or continue an earlier question with only a few words. Treating each comment as a fresh request makes those conversations brittle. We needed to carry context forward without throwing away the single-turn data we had already collected.
+We began working on multi-turn interaction in December 2024. Viewers often omit the subject or continue a question with a few words, so each reply needs earlier context. The redesign also had to use the single-turn data we had already collected.
 
 - Design a suitable multi-turn dialogue architecture and accumulate data to support the desired interaction quality.
 - Improve the existing intent model while reusing the substantial single-turn classification dataset and supporting new capabilities.
 
-We changed the input and the model together. Intent recognition now sees live-room products, history, and the comment; an LLM replaces BERT and emits the label. On this dataset, accuracy reached 80%, against 71% for DeepSeek-R1 and 69% for BERT trained on the same mixed data. The useful lesson for us was how much business labels and context helped with these boundaries.
+Intent recognition now receives live-room products, history, and the current comment. An LLM replaces BERT and outputs the label directly. Accuracy on this dataset reached 80%, compared with 71% for DeepSeek-R1 and 69% for BERT trained on the same mixed data. These results reflect the contribution of business labels and context to the boundaries in this task.
 
 ### Multi-turn interaction architecture
 
@@ -87,7 +87,7 @@ The intent taxonomy changed twice:
 
 - Multi-turn labeling is much harder: determining the true intent may take 30–60 seconds per example.
 - The current product, viewer-specific dialogue history, and current comment provide sufficient information to identify intent.
-- Context does not remove every ambiguity. A question can support a link ID or product keywords, and a previously discussed item may now be the current presentation. Several routes can retrieve enough evidence. We therefore inspect intent accuracy and the final reply separately: a routing error need not become an answer error.
+- Multi-turn labels can be ambiguous. A question may identify a product through a link ID or keywords, and an item from the history may now be the current presentation. Several routes can retrieve sufficient evidence, so a routing error need not produce an answer error. We evaluate intent and final replies separately.
 
 #### Cases where context changes the route
 
@@ -104,7 +104,7 @@ The intent taxonomy changed twice:
 
 ### More reasoning did not help this classifier
 
-We also tried giving the intent model a reasoning trace. R1 generated a chain of thought conditioned on each known label, and we used those examples for fine-tuning. The question was whether this extra supervision would help the model make the same classification decision more reliably.
+R1 generated reasoning traces conditioned on known intent labels, which we then used for fine-tuning. This tested whether the extra supervision improved classification reliability.
 
 | Method | Description | Accuracy |
 | --- | --- | --- |
@@ -131,7 +131,7 @@ The core challenges include history dependence, numerical interference, and gene
 
 ### Training data
 
-For entity parsing, we kept product questions, presentation requests, and their link-ID variants from the intent data. DeepSeek-R1 generated parses, followed by manual filtering, leaving 2100 examples. Even with the strongest parser in this comparison, we checked whether historical products were still relevant.
+Entity parsing uses the product questions, presentation requests, and link-ID variants from the intent data. DeepSeek-R1 performed best in this comparison, so we used its parses and manually filtered them, leaving 2100 examples. The review checks whether products mentioned earlier are still relevant to the current question.
 
 | Data component | Description |
 | --- | --- |
@@ -288,13 +288,13 @@ The same underlying example may be seen twice during training, increasing the ri
 
 Our solution:
 
-- Split original conversations before making text and TTS variants. Otherwise, rewrites can leak across the split. We saw evaluation accuracy above 95% in this situation, versus roughly 70–80% when this generation task converged. Those are observations from this setup; unexpectedly good numbers should trigger a split audit first.
+- Split conversations before generating text and TTS variants, so rewrites of one example cannot enter both training and validation. We saw accuracy exceed 95% with this leakage, compared with roughly 70–80% at convergence for this task. An unexpectedly high score therefore calls for checking the split before attributing it to the model.
 - Adjust the learning rate from the learning curves and select the checkpoint with the lowest validation loss.
 
 ## Checks that matter in deployment
 
-We pay particular attention to module handoffs. A correct intent can still produce a wrong entity, or the right entity can retrieve an unavailable item. Full-request replays sit alongside component scores so we can trace the reply back to its product and evidence.
+Errors often occur between modules. Correct intent can lead to a wrong entity, and the right entity can retrieve an unavailable item. We combine component evaluation with full-request replay to trace each reply to its product and evidence.
 
-Augmented versions of one conversation should stay together too: paraphrases, numerical perturbations, and noisy-history variants. When validation looks unexpectedly strong, we check construction and splitting before tuning again. Otherwise, an apparent model improvement may simply sit on top of a leaked baseline.
+Keep a conversation’s paraphrases, numerical perturbations, and noisy-history variants on the same side of the split. When validation is unexpectedly strong, review construction and splitting before tuning the model. Leakage can otherwise distort the baseline and every comparison against it.
 
 The reported intent and entity accuracies describe these business datasets and scoring rules. They are not universal model rankings. Continually labeling real boundary cases remains a practical way to improve a deployed classifier.

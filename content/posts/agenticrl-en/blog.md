@@ -20,7 +20,7 @@ The fixed intent-recognition–retrieval–generation workflow was becoming hard
 - Weak context awareness and dead ends: the system could not connect product-list information, spoken scripts, and historical comments. After an intent error, it could not reflect or backtrack and instead mechanically referred viewers to customer service.
 - No concurrent scheduling: high-frequency comments from multiple viewers were difficult to process, and richer actions or expressive interactions were hard to add.
 
-Model capability and serving cost made the migration worth trying. A 30B MoE model on one H20 could decode at 140 tokens/s, and base models were better at tools. We could now replace fixed branches with decisions based on current evidence. Latency and reply quality still needed their own work.
+A 30B MoE model could decode at 140 tokens/s on one H20, and base models had improved at tool use. That made replacing fixed branches with evidence-based decisions feasible at the serving cost. Latency and final-answer quality still needed optimization.
 
 ### Let the model choose the next action
 
@@ -58,7 +58,7 @@ Two examples were especially useful in a live room:
 
 Moving to an agent was only useful if it could reply quickly and reliably. We worked on those two constraints separately:
 
-- Latency first: a large teacher supplies trajectories for separate tool-use and response students. Generating a tool call takes about 0.3 seconds, with 140 tokens/s decoding on one H20. That makes a fast agent loop feasible; it is not the latency of a complete viewer interaction.
+- Latency: teacher trajectories train separate tool-use and reply students. A tool call takes about 0.3 seconds to generate, at 140 tokens/s on one H20. This measurement covers tool-call generation rather than the complete viewer interaction.
 - Then response quality: correctness and helpfulness rewards encourage replies grounded in tool evidence. We care especially about unsupported product facts and promises, including whether the model recognizes when it needs more information.
 
 #### AgentTuning distillation
@@ -75,7 +75,7 @@ Each extra reflection or tool round costs time in a live room. AgentTuning moves
 
 #### Response-model RLVR
 
-After distillation, the students could plan and call tools, but a final reply could still misread the evidence or make an unsupported promise. We continued from the AgentTuning checkpoint with GRPO on the response model. Several answers share the same tool-trajectory prefix; correctness, helpfulness, and length rewards then distinguish them. Correctness constrains the facts, helpfulness discourages evasive replies, and length limits unnecessary expansion.
+After distillation, the students could plan and call tools but still misread evidence or make unsupported promises in the final reply. We continued from AgentTuning with GRPO on that reply. For each fixed tool-trajectory prefix, multiple answers receive correctness, helpfulness, and length rewards to constrain facts, excessive caution, and unnecessary expansion.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-6"><div class="figure-heading"><span class="figure-label">Figure 6</span><button aria-label="Enlarge Figure 6" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="RLVR optimizes final responses from fixed tool-trajectory prefixes." decoding="async" height="603" loading="lazy" src="../agenticrl/images/figure-827d2e0e6f54.jpeg" width="1080"/></div><figcaption class="publication-caption">RLVR optimizes final responses from fixed tool-trajectory prefixes.</figcaption></figure>
 
@@ -86,7 +86,7 @@ After distillation, the students could plan and call tools, but a final reply co
 - Minimize hallucination and answer according to tool results.
 - Include a helpfulness reward so that avoiding hallucination does not make the model excessively conservative or unresponsive to viewers' needs.
 
-**One implementation detail:** in ROLL, we keep the teacher’s `messages[:-1]` as the prefix and let rollout generate only the final reply. `tokenizer.apply_chat_template` prepares the input format. RLVR updates that generated reply, so we need to check which tokens are conditions and which belong in the loss before interpreting any reward curve.
+In ROLL, the teacher’s `messages[:-1]` remains the prefix and rollout generates only the last reply. `tokenizer.apply_chat_template` prepares the input; RLVR updates the generated response. The prefix supplies conditions and is excluded from the reply loss, so its mask needs checking separately.
 
 #### Evaluation metrics
 
@@ -100,7 +100,7 @@ We sanitize, filter, and clean production traffic to build the evaluation datase
 
 <figure class="publication-figure figure-landscape" id="blog-figure-8"><div class="figure-heading"><span class="figure-label">Figure 8</span><button aria-label="Enlarge Figure 8" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Offline response-quality comparison after architecture and model optimization." decoding="async" height="432" loading="lazy" src="../agenticrl/images/figure-4d714dc120d8.png" width="1080"/></div><figcaption class="publication-caption">Offline response-quality comparison after architecture and model optimization.</figcaption></figure>
 
-On this interaction dataset, the agent improved correctness and helpfulness over the workflow and scored above the reported Gemini-2.5-pro and Qwen3-235B-A22B baselines. We read that result with its task, inputs, and calling setup attached.
+The agent improved correctness and helpfulness over Workflow and exceeded the reported Gemini-2.5-pro and Qwen3-235B-A22B baselines on this dataset. The comparison uses these task inputs and calling setups; it is not a general capability ranking.
 
 ### What changed after deployment
 
@@ -110,7 +110,7 @@ On this interaction dataset, the agent improved correctness and helpfulness over
 
 - Latency comparison, measured in seconds:
 
-- The new chain uses Instruct models; the original workflow used a Thinking model for its final reply. The responsibilities changed as well. Planning and tool selection now happen upstream, so the response model can concentrate on organizing evidence already collected instead of compensating for every unknown in the earlier pipeline.
+- The new chain uses Instruct models, while Workflow used a Thinking model for its final reply. Planning, tool selection, and evidence checks now happen upstream. The final model mainly organizes those facts, a change in responsibility that also affects the latency comparison.
 - Together with previous latency optimizations, this substantially reduces both mean latency and the P99 tail.
 
 <figure class="publication-figure figure-landscape" id="blog-figure-10"><div class="figure-heading"><span class="figure-label">Figure 10</span><button aria-label="Enlarge Figure 10" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Training the policy through multi-step tool interaction in a simulator." decoding="async" height="473" loading="lazy" src="../agenticrl/images/figure-03b1f72a6de6.png" width="1080"/></div><figcaption class="publication-caption">Training the policy through multi-step tool interaction in a simulator.</figcaption></figure>
@@ -152,9 +152,9 @@ The training and interaction loop has four key steps:
 
 - Finally, return sequences, masks, and episode scores to ROLL. It calculates advantages and losses, updates through Megatron, and synchronizes parameters to vLLM or SGLang. The next rollout must actually use the new policy for the iteration to be complete.
 
-**Check the interface before the curve:** ROLL handles much of the training loop, while our code supplies rollout, the loss mask, and reward scoring. A chat template’s mask may not match the task’s mask. We check tool results and system messages explicitly rather than assume every message-shaped segment is a policy output.
+ROLL supplies much of the training loop; our implementation supplies rollout, token masks, and rewards. A chat-template mask may differ from the required loss mask. Tool results and system messages must be checked explicitly: their message format does not make them policy-generated actions.
 
-**The environment came before the algorithm:** early failures often came from an unstable simulator or a reward that could not distinguish useful trajectories. The first makes feedback hard to compare; the second gives the policy little direction. Both are tedious to debug, but they determine whether a training curve is worth interpreting.
+Early runs were limited by simulator instability and rewards that failed to distinguish useful trajectories. Instability made feedback incomparable, while weak rewards gave the policy little direction. Both needed attention before the training curves could support a reliable conclusion.
 
 ### Why the final reward was not enough
 
@@ -192,11 +192,11 @@ Training:
 3. Each model uses its own initial reference model for KL divergence. Importance sampling follows the basic GRPO/PPO setup.
 4. Synchronize parameters from the Megatron training models to the vLLM inference models and start the next iteration.
 
-**What we observed:** the two-agent version converged more readily on this task, with feedback closer to each model’s responsibility. That still depends on correct environments, masks, and rewards, not merely on using two models.
+The two-agent configuration converged more readily on this task because feedback was closer to each role’s responsibility. This still relies on correct environments, masks, and rewards; splitting the models alone does not guarantee the result.
 
-**Reusing step rewards:** their data flow is a useful starting point, with GiGPO already available in ROLL. With two parameter sets, each sequence, reward, and checkpoint still needs the right owner.
+Step-reward data flow is a useful starting point, including the GiGPO implementation in ROLL. With separate agent parameters, each sequence, reward, and checkpoint also needs to retain its model ownership.
 
-**Two models also mean two checkpoints:** we use `cluster_name` at the `ckpt_id` level to distinguish their ownership, then reuse ROLL’s automatic OPENLM MOS upload path. Saving both sides of an iteration makes it possible to load and replay the same trained pair later.
+We distinguish checkpoints with `cluster_name` at the `ckpt_id` level, then reuse ROLL’s automatic OPENLM MOS upload. Saving both models from the same iteration allows the trained pair to be loaded and replayed together.
 
 ### Reward design
 
@@ -223,7 +223,7 @@ Mixed rewards make single-agent Agentic RL difficult to improve or converge. Sep
 - This experiment was run separately from the earlier architecture comparison. We updated the factual-correctness and helpfulness judges and used a stronger distillation teacher, GLM 4.7.
 - We also evaluate tool-call rationality separately to monitor tool competence, addressing the earlier problem of optimizing only the final answer while tool use deteriorated.
 
-Relative to the SFT baseline in this experiment, the response model gained 4.1 points in correctness and 23.6 in helpfulness; the tool model gained 18.2 points in tool rationality. These are improvements in the two parts of the trained system, read under the experiment’s own teacher and Judge setup.
+Relative to this experiment’s SFT baseline, correctness improved 4.1 points, helpfulness 23.6, and tool rationality 18.2. The response and tool improvements are recorded separately under this teacher and Judge configuration.
 
 ### Where the gains come from
 
@@ -236,6 +236,6 @@ Relative to the SFT baseline in this experiment, the response model gained 4.1 p
 
 The production A/B comparison and the offline Multi-Agent RL experiments belong to different stages. The 1.79-second mean end-to-end latency, 1.36-second reduction, and 2.76% increase in multi-turn users concern the move from Workflow to the Agentic architecture. They should not all be attributed to the later Multi-Agent RL method.
 
-The offline gains of 4.1 points in correctness, 23.6 in helpfulness, and 18.2 in tool rationality are relative to the supervised baseline in those experiments. Teacher and Judge configurations also matter. Read each comparison with its own baseline, input set, and scoring protocol rather than treating several tables as one controlled experiment.
+The offline gains of 4.1 points in correctness, 23.6 in helpfulness, and 18.2 in tool rationality use the supervised baseline from those experiments. Teacher, Judge, inputs, and scoring rules differ across comparisons, so the tables do not form one controlled experiment.
 
-For deployment, the useful outcome is an inspectable trajectory: what evidence was missing, why a tool was called, and whether the reward encouraged the intended behavior. Splitting the task across two agents makes these questions easier to diagnose; it does not remove the need to validate the environment and the reward.
+Complete trajectories let us investigate missing evidence, tool choices, and whether rewards favor the intended behavior. Two agents make those issues easier to diagnose and optimize, with environment and reward validation still required.

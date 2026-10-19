@@ -2,49 +2,49 @@
   "agenticrl-en": {
     "title": "From workflows to Multi-Agent RL",
     "summary": "Tool use and final responses need different skills—and different rewards.",
-    "minutes": 12,
+    "minutes": 11,
     "figures": 17
   },
   "agenticrl": {
     "title": "从固定工作流到 Multi-Agent RL",
     "summary": "工具调用和最终回复需要不同的能力，也需要不同的奖励。",
-    "minutes": 15,
+    "minutes": 13,
     "figures": 17
   },
   "controlpe-cn": {
     "title": "ControlPE：给提示词加一个强度旋钮",
     "summary": "把提示词效果蒸馏进 LoRA，再在“加上”和“不加”之间寻找更合适的强度。",
-    "minutes": 10,
+    "minutes": 9,
     "figures": 8
   },
   "controlpe": {
     "title": "ControlPE: a strength dial for prompts",
     "summary": "Distill a prompt’s effect into LoRA, then explore the space between applying it fully and leaving it out.",
-    "minutes": 11,
+    "minutes": 10,
     "figures": 8
   },
   "harness-aware-training-cn": {
     "title": "让模型适应变化的 Harness",
     "summary": "工具、规则和提示词会变，训练也不能只认一个版本。",
-    "minutes": 12,
+    "minutes": 11,
     "figures": 19
   },
   "harness-aware-training": {
     "title": "Training for a changing Harness",
     "summary": "Tools, rules, and prompts change. Training should not assume one fixed runtime.",
-    "minutes": 14,
+    "minutes": 13,
     "figures": 7
   },
   "livethinking-cn": {
     "title": "LiveThinking：把推理压到直播能用",
     "summary": "先蒸馏能力，再用强化学习去掉多余的思考。",
-    "minutes": 14,
+    "minutes": 12,
     "figures": 4
   },
   "livethinking": {
     "title": "LiveThinking: reasoning at livestream speed",
     "summary": "Distill the capability, then use reinforcement learning to remove unnecessary thinking.",
-    "minutes": 17,
+    "minutes": 15,
     "figures": 4
   },
   "llm-barrage-interaction-en": {
@@ -56,7 +56,7 @@
   "llm-barrage-interaction": {
     "title": "直播弹幕，怎么接得住上下文",
     "summary": "从意图识别、实体解析到回复生成，记录一条弹幕经过的处理链路。",
-    "minutes": 14,
+    "minutes": 13,
     "figures": 11
   },
   "llm-distillation-and-reasoning-compression-en": {
@@ -68,19 +68,19 @@
   "llm-distillation-and-reasoning-compression": {
     "title": "把推理模型的等待时间降下来",
     "summary": "从 R1 蒸馏到双偏好 DPO:短一点,也要答得好一点。",
-    "minutes": 14,
+    "minutes": 12,
     "figures": 6
   },
   "multiagent-opd-cn": {
     "title": "给搜索子智能体更直接的反馈",
     "summary": "MultiAgent-OPD：协调和回答看最终结果，搜索过程向教师学习，让分层 Agent 一起改进。",
-    "minutes": 11,
+    "minutes": 10,
     "figures": 4
   },
   "multiagent-opd": {
     "title": "MultiAgent-OPD: better feedback for search subagents",
     "summary": "Train coordination and answering from outcomes, while a task-trained teacher guides the search tokens the student actually generates.",
-    "minutes": 12,
+    "minutes": 11,
     "figures": 4
   }
 }

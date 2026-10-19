@@ -100,13 +100,13 @@ The bf16 14B model took about 10 seconds per answer. Quantization brought it to 
 
 ### The choice we took into the next round
 
-This round narrowed the path for the next experiment. We kept the 14B DeepSeek-R1-Distill-Qwen model and trained on the teacher’s complete reasoning and answer, then chose int8 as the deployment precision despite its quality trade-off. The remaining problem was clear: the student had learned better answers, but it had also learned to produce long outputs. Quantization helped without making that behavior disappear.
+We continued with DeepSeek-R1-Distill-Qwen-14B, training on the teacher’s complete reasoning and answer. Int8 reduced deployment cost at some loss of quality relative to bf16. The student answered better but retained the teacher’s long outputs, which quantization alone did not resolve.
 
 ## Reasoning-Path Compression
 
 ### The student learned the waiting time too
 
-We then expanded distillation to 30k production interactions across all tasks. Before launch, the timing comparison exposed the cost of the teacher’s long reasoning: relative to the non-reasoning model, bf16 latency rose almost tenfold and int8 still exceeded a fivefold increase. Better answers were arriving too late for a live room. We therefore compared three ways to reduce generation length:
+Distillation then expanded to 30k production interactions covering all tasks. Before launch, bf16 latency was almost ten times that of the non-reasoning model; int8 remained over five times higher. The longer reasoning made replies too slow for livestreams, so we compared three compression methods:
 
 To meet production latency requirements, we examine three CoT-compression methods:
 
@@ -135,7 +135,7 @@ C. Extend length-only selection to quality–length Dual-Preference DPO, conside
 
 Excerpt from the original Kimi 1.5 long2short rejection-sampling DPO description.
 
-We followed the long2short sampling idea on the examples discarded by scheme A. Sample R1 repeatedly; once a response below 400 tokens appears, pair the shortest candidate as chosen with the longest as rejected. This gives us a direct way to see what a preference for shorter output teaches the model.
+We repeatedly sampled R1 on examples discarded by scheme A. Once a response below 400 tokens appeared, the shortest candidate became chosen and the longest became rejected for DPO. This follows long2short and tests a preference based on length alone.
 
 Sampling results:
 
@@ -152,7 +152,7 @@ Kimi's method selects only the shortest and longest responses as positive and ne
 - Short CoT can perform worse than long CoT, as Kimi 1.5 also observes.
 - Short sampled responses may have lower quality than long ones.
 
-We want a shorter answer that still answers well. Pair construction therefore weighs quality and length together. Before selecting weights, we inspect the length gap, quality gap, and retained sample count: compressing more is useful only if the needed information survives.
+DP-DPO selects pairs using both quality and length. We inspect their score gap, length gap, and retained sample count before setting the weights, checking whether compression preserves the information needed to answer.
 
 <!-- image:llm-distillation-and-reasoning-compression:images/figure-bb4538013d59.png | Domain distillation followed by DPO with quality and length preferences. -->
 
@@ -171,7 +171,7 @@ Each candidate gets one combined score. Its first term favors shorter output, an
 
 <!-- image:llm-distillation-and-reasoning-compression:images/figure-bdaec00ef893.jpeg | Combining normalized length and quality preferences. -->
 
-Within one question’s candidates, the highest score becomes chosen and the lowest rejected. We discard pairs below the score-gap threshold so nearly equivalent answers do not become strong preference signals. The shortest candidate is not automatically the one we prefer.
+Within each question’s candidates, the highest combined score becomes chosen and the lowest rejected. Pairs below the score-gap threshold are discarded to avoid imposing strong preferences on near-equivalent answers. Selection therefore depends on quality and length, not shortest output alone.
 
 #### Hyperparameter search for the two preferences
 
@@ -218,7 +218,7 @@ The additional SFT loss helps prevent the chosen and rejected rewards from falli
 
 ### Validation improved, but fresh traffic did not
 
-Validation looked promising, but fresh traffic told a different story: DP-DPO beat long2short yet fell below uncompressed SFT. Before changing algorithms, we expanded dual-preference construction to all training product questions, increasing data fivefold. The table keeps validation and fresh traffic separate so one good column does not hide the problem.
+DP-DPO scored well on validation but fell below uncompressed SFT on fresh production traffic, while remaining above long2short. We expanded preference construction to every training product question, increasing data fivefold, then repeated training. Validation and fresh-traffic results are reported separately.
 
 | Method | Validation overall | Validation multi-turn | Production overall | Production multi-turn |
 | --- | --- | --- | --- | --- |
@@ -230,19 +230,19 @@ Validation looked promising, but fresh traffic told a different story: DP-DPO be
 
 - Validation and production tests use the same construction procedure, but validation shares the training collection period while the production test uses traffic after the reasoning model went live.
 - Expansion affects only the training-set DPO data; it does not include post-deployment traffic.
-- All our trained models lose some quality on fresh traffic, with a larger drop for DPO than SFT. That prompted us to check overfitting on the small preference dataset, alongside coverage, sample similarity, and changes in traffic.
+- All trained models lost quality on fresh traffic, more so for DPO than SFT. This raised concerns about overfitting on the small preference set. Coverage, near-duplicates, and traffic changes also need checking; this comparison cannot attribute the entire gap to DPO.
 - DP-DPO continues to outperform long2short DPO on production traffic.
 - Expanding to 15k examples raises DP-DPO’s overall fresh-traffic score from 82.5 to 84.8, above the SFT reference in this comparison.
 
 ### Better selected data, or a useful DPO step
 
-The expanded dataset improved quality and length, but selecting better examples could also explain part of the gain. We ran another comparison to see what the DPO step added:
+Better selected examples could explain part of the gains after data expansion. We compared two configurations to test the additional contribution of DPO:
 
 1. SFT using only chosen examples from dual-preference rejection sampling (DP-SFT).
 
 2. Additional dual-preference DPO on the model from approach 1 (DP-DPO).
 
-Both alternatives use the same 15k preference pairs; only the later DPO step differs. We retain the fresh-traffic test and long-filtered SFT reference to separate better data selection from the value of the preference update.
+Both use the same 15k preference pairs and differ only in the later DPO step. Evaluation retains the fresh-traffic test and long-filtered SFT reference, separating the effect of example selection from that of preference optimization.
 
 Results:
 
@@ -275,7 +275,7 @@ Long reasoning still violated livestream response-time requirements. We first re
 
 That quality drop led us to DP-DPO: DeepSeek-R1 scores the candidates, and pair selection weighs quality with length. Compression remains close to long2short, while reply quality improves over SFT in this comparison.
 
-Fresh traffic then exposed the generalization gap. Expanding preference data fivefold improved that test substantially, making data coverage the next thing to inspect rather than assuming the validation gain would survive deployment.
+The fresh-traffic drop led us to expand preference data fivefold, which improved that test. Data coverage therefore needed investigation beyond the apparent validation gain.
 
 ### Future work
 
@@ -285,6 +285,6 @@ Fresh traffic then exposed the generalization gap. Expanding preference data fiv
 
 ## From decoding estimates to service latency
 
-The compression tables use a fixed 62.5 tokens/s decoding rate on one H20 to convert output lengths into time estimates. These estimates help compare generation volume; they do not measure production queueing, prefill, retrieval, or the rest of the service. The earlier quantization comparison and the later length-based estimates should therefore be read separately.
+The compression tables convert output lengths into time using 62.5 tokens/s on one H20. These estimates compare generation volume; they exclude production queueing, prefill, retrieval, and business processing. They are separate from the earlier quantization measurements and from actual end-to-end latency.
 
-Keep capability transfer, preference preservation, and deployment latency as separate checks. Smaller models and shorter sequences can both lose useful information. An independent fresh-traffic set, plus a near-duplicate audit of preference-training and validation data, provides stronger evidence of generalization than a validation mean alone.
+Capability transfer, preference quality, and deployment latency need separate checks. Smaller models and shorter sequences may lose information. Hold out fresh traffic and check near-duplicates between preference training and validation before judging whether compression generalizes beyond the validation mean.
