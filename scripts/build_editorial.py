@@ -1,4 +1,4 @@
-"""Build the concise bilingual blog editions; retain full publication sources."""
+"""Build the edited bilingual blog editions; retain full publication sources."""
 from pathlib import Path
 from bs4 import BeautifulSoup
 from PIL import Image
@@ -41,11 +41,14 @@ def main():
         assert '<!-- image:' not in rendered and '<!-- figure:' not in rendered
         page=ROOT/'content/posts'/slug;assert (page/'index.md').exists(),slug
         (page/'blog.md').write_text(rendered+'\n',encoding='utf-8')
-        plain=PATTERN.sub('',text)
+        visible=BeautifulSoup(PATTERN.sub('',text),'html.parser')
+        for formula in visible.select('svg, script, style'):
+            formula.decompose()
+        plain=visible.get_text(' ',strip=True)
         meta['minutes']=max(3,math.ceil(len(re.findall(r'[\u4e00-\u9fff]',plain))/450+len(re.findall(r'\b[a-zA-Z]+\b',plain))/220))
         meta['figures']=count;entries[slug]=meta
-    assert len(entries)==10,'Expected ten concise language editions'
+    assert len(entries)==10,'Expected ten edited language editions'
     (ROOT/'data/editorial.json').write_text(json.dumps(entries,ensure_ascii=False,indent=2),encoding='utf-8')
-    print('Prepared 10 concise blog editions; full sources remain unchanged.')
+    print('Prepared 10 edited blog editions; full sources remain unchanged.')
 
 if __name__=='__main__':main()

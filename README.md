@@ -47,7 +47,7 @@ git push origin master
 
 如果使用普通项目仓库 `blog`，同样支持 `https://用户名.github.io/blog/`。工作流自动使用 GitHub Pages 返回的正确 base URL，CSS、JS、搜索和 RSS 使用对应子路径。自定义域名则在仓库 Pages 设置中配置，并同步修改 `baseURL`。
 
-工作流参考 [Hugo 官方 GitHub Pages 部署文档](https://gohugo.io/host-and-deploy/deploy-to-github-pages/)。本次完成本地项目与部署配置，尚未修改远程仓库或发布线上站点。
+工作流参考 [Hugo 官方 GitHub Pages 部署文档](https://gohugo.io/host-and-deploy/deploy-to-github-pages/)。站点已部署到 [sunyuhan19981208.github.io](https://sunyuhan19981208.github.io/)，本地 `D:\Code\blog` 已关联原主页仓库；推送 `master` 会自动构建并发布。旧站文件和提交历史保留。
 
 ## 文件组织
 
@@ -83,7 +83,7 @@ blog/
 
 ## 内容与维护
 
-站点默认展示的是博客稿，而非完整论文转载。五篇工作的十个版本均已改写为较短的技术笔记：保留问题、关键方法、必要图表、实验结果与局限，省略论文摘要、相关工作和大段附录。文章开头只保留标题和一句简介，文末链接到原始出版物；BibTeX 默认折叠。
+站点默认展示经过编辑的长篇技术博客。中文以 Harness 中文实践文章约 5,500 汉字的篇幅为参照，展开问题、数据构建、训练方案、图表、实验对比与工程经验；英文保留对应的技术深度。省略宣传介绍、论文贡献列表和无关附录，文章开头保留短标题和一句简介，文末保留原文链接；BibTeX 默认折叠。
 
 **日常改稿请编辑 `editorial/posts/<slug>.md`**：文件开头的 JSON 保存博客标题和简介，后面是正文。运行 `python scripts/build_editorial.py` 会生成各文章的 `blog.md` 及 `data/editorial.json`，自动更新阅读时长。插图标记引用原版资源，由脚本生成统一图号和图注，不复制或重绘原图。
 
