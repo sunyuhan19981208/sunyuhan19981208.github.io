@@ -3,9 +3,9 @@ DeepSeek-R1 scored 86 on our product-QA task; the production model scored 75. Bu
 We tackled two separate costs: distillation made the model smaller, then preference training shortened what it generated.
 
 
-## Starting with a task worth distilling
+## Distillation task and evaluation {#starting-with-a-task-worth-distilling}
 
-### Why we started with product questions
+### Product QA {#why-we-started-with-product-questions}
 
 Our chain has eight intent-based tasks, each with its own evidence and instructions. We started with product questions: the model must understand the viewer and decide what the material supports. DeepSeek-R1 supplies the reasoning demonstrations; we first test whether a smaller model can learn from them.
 
@@ -27,7 +27,7 @@ Our chain has eight intent-based tasks, each with its own evidence and instructi
 
 This illustration does not establish actual model quality. Appendix B contains real production examples.
 
-### How we tell whether an answer improved
+### Answer quality evaluation {#how-we-tell-whether-an-answer-improved}
 
 DeepSeek-R1 scores responses from the product information, dialogue history, viewer question, and AI-host answer. Evaluation combines four dimensions:
 
@@ -36,7 +36,7 @@ DeepSeek-R1 scores responses from the product information, dialogue history, vie
 - Internal consistency: avoid logical contradictions and produce natural language suitable for speech.
 - Instruction consistency: follow the avatar-host requirements in the prompt.
 
-## Moving R1’s answer behavior into a smaller model
+## R1 distillation {#moving-r1s-answer-behavior-into-a-smaller-model}
 
 On product questions, DeepSeek-R1 scores 86/100 versus 75 for the production model, an 11-point gap. We investigate three ways to transfer its capabilities to compact models:
 
@@ -58,7 +58,7 @@ The experiments support three conclusions:
 | B | Qwen with CoT | R1-generated data including `<think>` sequences; Qwen2.5-Instruct bases at several sizes. |
 | C | DeepSeek-R1-Distill-Qwen with CoT | Complete R1-generated sequences including thinking; DeepSeek-R1-Distill-Qwen bases at several sizes. |
 
-### Comparing three ways to distill
+### Distillation comparison {#comparing-three-ways-to-distill}
 
 | Scheme | Model/method | Mean quality score |
 | --- | --- | --- |
@@ -70,7 +70,7 @@ The experiments support three conclusions:
 
 Evaluate generated responses using the quality-evaluation procedure above.
 
-### How small can we go
+### Student model size {#how-small-can-we-go}
 
 - The model also decides whether the evidence can answer the question. Both the product and facts must match. We want it to separate what it knows from what it cannot confirm before replying, rather than maximize refusal.
 - We study how model size relates to distillation by measuring refusal agreement with DeepSeek-R1. This is an approximate behavioral indicator rather than a complete quality metric.
@@ -81,7 +81,7 @@ Evaluate generated responses using the quality-evaluation procedure above.
 - Agreement rises with model size for all three schemes. Direct-answer distillation is preferable at 1.5B.
 - At 14B, DeepSeek-R1-Distill-Qwen exceeds direct-answer distillation and approaches Qwen-with-CoT agreement.
 
-### What quantization saves and what it costs
+### Quantization results {#what-quantization-saves-and-what-it-costs}
 
 The bf16 14B model took about 10 seconds per answer. Quantization brought it to roughly 5 seconds with a quality cost; 7B was faster but answered less well. We needed both comparisons before choosing the next model.
 
@@ -93,13 +93,13 @@ The bf16 14B model took about 10 seconds per answer. Quantization brought it to 
 | Scheme C, 7B | int8 | 69 | 2.5s |
 | Production 14B | bf16 | 75 | 1s |
 
-### The choice we took into the next round
+### Model choice {#the-choice-we-took-into-the-next-round}
 
 We continued with DeepSeek-R1-Distill-Qwen-14B, training on the teacher’s complete reasoning and answer. Int8 reduced deployment cost at some loss of quality relative to bf16. The student answered better but retained the teacher’s long outputs, which quantization alone did not resolve.
 
-## Reasoning-Path Compression
+## Reasoning-path compression {#reasoning-path-compression}
 
-### The student learned the waiting time too
+### Reasoning latency after distillation {#the-student-learned-the-waiting-time-too}
 
 Distillation then expanded to 30k production interactions covering all tasks. Before launch, bf16 latency was almost ten times that of the non-reasoning model; int8 remained over five times higher. The longer reasoning made replies too slow for livestreams, so we compared three compression methods:
 
@@ -111,14 +111,14 @@ B. Reproduce Kimi 1.5 long2short DPO. Resample the examples discarded in A; if a
 
 C. Extend length-only selection to quality–length Dual-Preference DPO, considering both response length and quality when choosing positive and negative examples.
 
-### A note on timing and quality scores
+### Timing and scoring {#a-note-on-timing-and-quality-scores}
 
 - Runtime estimates assume Qwen2.5-14B decoding at 62.5 tokens/s on one H20. All runtimes in this article are converted estimates.
 - Decoding dominates reasoning latency. Infrastructure optimization makes prefill time negligible here.
 - Generative reward models with CoT are used to score preferences. We use DeepSeek-R1 to score response-quality preferences with the same quality-evaluation procedure.
 - Related reasoning-compression work includes CoD, COCONUT, and long2short. For rejection-sampling DPO, see RS-DPO in the references below.
 
-### First try: discard long examples
+### Filtering long examples {#first-try-discard-long-examples}
 
 <figure class="publication-figure figure-landscape" id="blog-figure-2"><div class="figure-heading"><span class="figure-label">Figure 2</span><button aria-label="Enlarge Figure 2" class="figure-expand" type="button">View figure ↗</button></div><div class="figure-media"><img alt="Distribution of teacher-generated output lengths." decoding="async" height="514" loading="lazy" src="../llm-distillation-and-reasoning-compression/images/figure-16d3885abf91.png" width="1026"/></div><figcaption class="publication-caption">Distribution of teacher-generated output lengths.</figcaption></figure>
 
@@ -126,7 +126,7 @@ C. Extend length-only selection to quality–length Dual-Preference DPO, conside
 - Discarding outputs above 400 tokens lowers the average decoding length to 300 tokens.
 - Limitation: filtering training examples does not prevent the trained model from generating more than 400 tokens at inference time.
 
-### Next try: prefer shorter answers with long2short
+### long2short training {#next-try-prefer-shorter-answers-with-long2short}
 
 Excerpt from the original Kimi 1.5 long2short rejection-sampling DPO description.
 
@@ -140,7 +140,7 @@ Sampling results:
 
 Limitation: as reported in Kimi 1.5, this effectively shortens reasoning but also reduces response quality.
 
-### DP-DPO: consider quality when choosing the shorter answer
+### DP-DPO: quality and length preferences {#dp-dpo-consider-quality-when-choosing-the-shorter-answer}
 
 Kimi's method selects only the shortest and longest responses as positive and negative examples. Its reported quality decrease suggests two issues:
 
@@ -160,7 +160,7 @@ DP-DPO selects pairs using both quality and length. We inspect their score gap, 
 - Discard a group if the positive–negative score gap is below a threshold determined by the desired drop ratio.
 - Train the domain-distilled Stage 1 model on the resulting DPO pairs.
 
-#### Constructing quality–length preference pairs
+#### Preference-pair construction {#constructing-qualitylength-preference-pairs}
 
 Each candidate gets one combined score. Its first term favors shorter output, and its second favors higher quality. Here l is length, s is quality, and alpha/beta set the balance. We keep the normalization constants fixed within an experiment so the candidate scores remain comparable.
 
@@ -168,7 +168,7 @@ Each candidate gets one combined score. Its first term favors shorter output, an
 
 Within each question’s candidates, the highest combined score becomes chosen and the lowest rejected. Pairs below the score-gap threshold are discarded to avoid imposing strong preferences on near-equivalent answers. Selection therefore depends on quality and length, not shortest output alone.
 
-#### Hyperparameter search for the two preferences
+#### Quality and length weights {#hyperparameter-search-for-the-two-preferences}
 
 Searching weights for reasoning length and response quality.
 
@@ -193,11 +193,11 @@ Left: mean chosen–rejected length gap versus drop ratio and length-preference 
 
 Under the selected hyperparameters, chosen responses are on average 204 tokens shorter and score 2.57 points higher than rejected responses.
 
-#### DPO preference training
+#### Domain-model DPO training {#dpo-preference-training}
 
 The additional SFT loss helps prevent the chosen and rejected rewards from falling together. Otherwise, the model may learn a relative preference while its absolute quality deteriorates. We monitor reward values while tuning training hyperparameters.
 
-### Did quality survive the shorter output
+### Answer quality after compression {#did-quality-survive-the-shorter-output}
 
 | Method | Product-QA score | Mean length | Mean RT | Longest length | Longest RT |
 | --- | --- | --- | --- | --- | --- |
@@ -211,7 +211,7 @@ The additional SFT loss helps prevent the chosen and rejected rewards from falli
 - Signed score changes use filtered SFT as the reference; signed latency changes use the unfiltered baseline. The table uses different references for these two metrics.
 - Both DPO models start from the filtered SFT model: the length-only branch reproduces long2short, while the dual-preference branch introduces DP-DPO.
 
-### Validation improved, but fresh traffic did not
+### Quality regression on new traffic {#validation-improved-but-fresh-traffic-did-not}
 
 DP-DPO scored well on validation but fell below uncompressed SFT on fresh production traffic, while remaining above long2short. We expanded preference construction to every training product question, increasing data fivefold, then repeated training. Validation and fresh-traffic results are reported separately.
 
@@ -229,7 +229,7 @@ DP-DPO scored well on validation but fell below uncompressed SFT on fresh produc
 - DP-DPO continues to outperform long2short DPO on production traffic.
 - Expanding to 15k examples raises DP-DPO’s overall fresh-traffic score from 82.5 to 84.8, above the SFT reference in this comparison.
 
-### Better selected data, or a useful DPO step
+### Data selection and DPO ablations {#better-selected-data-or-a-useful-dpo-step}
 
 Better selected examples could explain part of the gains after data expansion. We compared two configurations to test the additional contribution of DPO:
 
@@ -250,7 +250,7 @@ Results:
 - SFT on the chosen examples barely changes the overall score and slightly lowers the multi-turn score, although it shortens the longest outputs.
 - Continuing with DPO improves both scores and reasoning length. This comparison gives us more reason to connect the additional gains to the preference update.
 
-### What changed with more epochs
+### Effect of training epochs {#what-changed-with-more-epochs}
 
 | Epoch | Kimi long2short mean length | Kimi quality | DP-DPO mean length | DP-DPO quality |
 | --- | --- | --- | --- | --- |
@@ -262,7 +262,7 @@ Results:
 - Single-preference DPO continuously lowers mean response quality during training.
 - Dual-preference DPO initially sacrifices quality while learning shorter reasoning, then surpasses the original model in the next two epochs.
 
-## Conclusions
+## Results {#conclusions}
 
 DeepSeek-R1's strong interaction benchmark performance motivated distillation into compact models. Comparing three approaches led us to choose DeepSeek-R1-Distill-Qwen-14B as the base.
 
@@ -272,13 +272,13 @@ That quality drop led us to DP-DPO: DeepSeek-R1 scores the candidates, and pair 
 
 The fresh-traffic drop led us to expand preference data fivefold, which improved that test. Data coverage therefore needed investigation beyond the apparent validation gain.
 
-### Future work
+### Planned improvements {#future-work}
 
 1. Our best production-test score, 84.8, still trails DeepSeek-R1's 86.0. We aim to develop a low-latency interaction model that exceeds R1.
 2. A stronger reward model could evaluate and optimize interactions better than R1, allowing a transition from offline preference alignment to online reinforcement learning.
 3. As the product develops, richer product facts, livestream state, spoken explanations, and multimodal information will pose new modeling challenges.
 
-## From decoding estimates to service latency
+## Serving latency and offline timing {#from-decoding-estimates-to-service-latency}
 
 The compression tables convert output lengths into time using 62.5 tokens/s on one H20. These estimates compare generation volume; they exclude production queueing, prefill, retrieval, and business processing. They are separate from the earlier quantization measurements and from actual end-to-end latency.
 

@@ -1,5 +1,5 @@
 {
-  "title": "Making sense of livestream comments",
+  "title": "Livestream interaction with LLMs",
   "summary": "Intent recognition, entity parsing, retrieval, and the context a short comment leaves unsaid."
 }
 
@@ -8,11 +8,11 @@ A viewer asks for a toilet recommendation, then sends just two words: “smart t
 Fragments like this are common in livestreams. The system needs the viewer's history, the product currently on screen, and the live product list—not just the latest message.
 
 
-## Text replies and spoken replies need different treatment
+## Text and spoken replies {#text-replies-and-spoken-replies-need-different-treatment}
 
 Replies appear as chat text or pass through TTS and lip synchronization for the avatar to speak. The questions are similar, but cost, waiting time, and wording differ. Speech runs mainly in the flagship version, which has more resources; other versions rely more on text. Both modes first need to identify the viewer’s question and retrieve supporting product information before generating a reply.
 
-## What happens to one comment
+## Comment processing {#what-happens-to-one-comment}
 
 <!-- image:llm-barrage-interaction:images/figure-92603a48521c.png | The interaction workflow: intent and entities determine retrieval before response generation. -->
 
@@ -30,9 +30,9 @@ The interaction pipeline includes the following components:
 - Generation: place retrieved information, the comment, and dialogue history into task-specific prompts for the LLM. Templates cover casual chat, product questions, and promotion questions.
 - Presentation reordering: a product-presentation request changes the presentation order and receives a fixed response rather than an LLM-generated answer.
 
-## Carrying intent across turns
+## Multi-turn intent recognition {#carrying-intent-across-turns}
 
-### Let the next question build on the last
+### Conversation context {#let-the-next-question-build-on-the-last}
 
 We began working on multi-turn interaction in December 2024. Viewers often omit the subject or continue a question with a few words, so each reply needs earlier context. The redesign also had to use the single-turn data we had already collected.
 
@@ -58,7 +58,7 @@ The intent taxonomy changed twice:
 - July 2024: added product recommendations and livestream promotion questions.
 - January 2025: merged product recommendations and product searches into product questions.
 
-### Looking at actual conversations
+### Conversation examples {#looking-at-actual-conversations}
 
 | Viewer comment | Dialogue history | Recognized intent | Avatar response |
 | --- | --- | --- | --- |
@@ -66,7 +66,7 @@ The intent taxonomy changed twice:
 | Which one connects through Bluetooth? | User: Does the lapel microphone need Bluetooth? Assistant: This lapel microphone connects through Bluetooth and is convenient to use. | Product question | Look at the Jinyun wireless Bluetooth headphones at link 6 or the in-ear model at link 11. Both use Bluetooth. |
 | Okay | User: How do I enter the draw? Assistant: Please ask customer service about the detailed draw rules. | Casual chat | Okay, good luck with the draw! |
 
-### Why we moved to an LLM with context
+### LLM-based intent recognition {#why-we-moved-to-an-llm-with-context}
 
 <!-- image:llm-barrage-interaction:images/figure-c8b91623c77e.png | Moving from single-turn classification to an LLM with live-room context. -->
 
@@ -80,7 +80,7 @@ The intent taxonomy changed twice:
 3. Send the remaining examples to annotators.
 4. Algorithm engineers review annotations individually and remove examples humans cannot reliably interpret. The final dataset contains over 3000 multi-turn intent examples.
 
-### Scores and boundary cases
+### Evaluation and edge cases {#scores-and-boundary-cases}
 
 | Method | Description | Accuracy |
 | --- | --- | --- |
@@ -94,7 +94,7 @@ The intent taxonomy changed twice:
 - The current product, viewer-specific dialogue history, and current comment provide sufficient information to identify intent.
 - Multi-turn labels can be ambiguous. A question may identify a product through a link ID or keywords, and an item from the history may now be the current presentation. Several routes can retrieve sufficient evidence, so a routing error need not produce an answer error. We evaluate intent and final replies separately.
 
-#### Cases where context changes the route
+#### Context-dependent cases {#cases-where-context-changes-the-route}
 
 | Comment | Current product | Dialogue history | Single-turn intent | Multi-turn intent | Explanation |
 | --- | --- | --- | --- | --- | --- |
@@ -107,7 +107,7 @@ The intent taxonomy changed twice:
 - DeepSeek-R1 makes intent errors on broadly distributed, long-tail boundary cases that prompt tuning alone cannot resolve.
 - Data-driven SFT handles these cases and can improve further with more annotated production examples.
 
-### More reasoning did not help this classifier
+### Effect of CoT on classification {#more-reasoning-did-not-help-this-classifier}
 
 R1 generated reasoning traces conditioned on known intent labels, which we then used for fine-tuning. This tested whether the extra supervision improved classification reliability.
 
@@ -119,7 +119,7 @@ R1 generated reasoning traces conditioned on known intent labels, which we then 
 - Generated CoT diluted supervision on the true labels, performing worse than directly predicting the labels.
 - R1 annotation can work well in an open label space, but generating reasoning for examples with existing ground-truth labels did not meet expectations here.
 
-## Finding the product the viewer means
+## Entity resolution {#finding-the-product-the-viewer-means}
 
 The multi-turn product-entity parser extracts product names, attributes, and link numbers from dialogue history and recognized intent.
 
@@ -193,7 +193,7 @@ DeepSeek-R1 first generates product pairs exhibiting these issues, then generate
 
 <!-- image:llm-barrage-interaction:images/figure-ff72febd7e73.png | Constructing examples with historical noise and perturbed product names. -->
 
-### How we score a parse and inspect its errors
+### Evaluation and error analysis {#how-we-score-a-parse-and-inspect-its-errors}
 
 Training: LoRA fine-tuning of a 7B base model.
 
@@ -216,7 +216,7 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 | What differs between links one and seven? | Viewer: Can 7 record audio? Host: The high-end tracker at link 7 can; ask customer service for details. Viewer: Does link seven need Wi-Fi? Host: A Wi-Fi version is available; customer service can explain setup. | Link-number product question | 1, 7 |
 | Difference | Viewer: Promotions for links 30 and 27. Host: Before ordering, open the product list at the bottom right and claim the shop coupon after entering the product page. | Link-number product question | 30, 27 |
 
-## Keeping retrieval tied to the live catalog
+## Product retrieval {#keeping-retrieval-tied-to-the-live-catalog}
 
 <!-- image:llm-barrage-interaction:images/figure-a6c40beabfaa.png | Live catalog synchronization, semantic retrieval, and lexical ranking. -->
 
@@ -224,9 +224,9 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 - After catalog synchronization, BERT retrieves semantic candidates and BM25 adds a lexical check against product text and the comment. We combine both signals in the final filter. This helps short queries, where a category word or specification can matter more than overall embedding similarity.
 - Lexical reranking improves retrieval for short queries.
 
-## Turning evidence into a reply
+## Response generation {#turning-evidence-into-a-reply}
 
-### Different questions need different replies
+### Response strategies {#different-questions-need-different-replies}
 
 - Casual chat: respond using the conversation history and current comment.
 
@@ -250,7 +250,7 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 | How can I get the best price? | Before ordering, open the product list at the bottom right and claim the fan red packet after entering the product page. | Type: pre-purchase coupon; name: fan red packet; no minimum spend; discount: 4.0 yuan; fans only; claim by entering the product page. |
 | Are government subsidies still available? | Check the product list for a government-subsidy label and open the product to claim it. Policies vary by region. | — |
 
-### Where the response data comes from
+### Response-model training data {#where-the-response-data-comes-from}
 
 <!-- image:llm-barrage-interaction:images/figure-8b5a4b0b6530.png | Context differences between single-turn and multi-turn interaction. -->
 
@@ -273,7 +273,7 @@ Evaluation: compute Jaccard similarity between the predicted and true product st
 | Questions without an explicit subject | Multi-turn | 398 |
 | Total | All data | 8416 |
 
-### Saying the same thing in text and speech
+### Text and speech phrasing {#saying-the-same-thing-in-text-and-speech}
 
 | Viewer comment | Text response | Spoken/TTS response |
 | --- | --- | --- |
@@ -296,7 +296,7 @@ Our solution:
 - Split conversations before generating text and TTS variants, so rewrites of one example cannot enter both training and validation. We saw accuracy exceed 95% with this leakage, compared with roughly 70–80% at convergence for this task. An unexpectedly high score therefore calls for checking the split before attributing it to the model.
 - Adjust the learning rate from the learning curves and select the checkpoint with the lowest validation loss.
 
-## Checks that matter in deployment
+## Deployment checks {#checks-that-matter-in-deployment}
 
 Errors often occur between modules. Correct intent can lead to a wrong entity, and the right entity can retrieve an unavailable item. We combine component evaluation with full-request replay to trace each reply to its product and evidence.
 

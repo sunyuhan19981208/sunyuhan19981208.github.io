@@ -5,14 +5,14 @@
 
 ## 从工作流到 Agent
 
-### 我们要接住怎样的互动
+### 直播互动场景 {#我们要接住怎样的互动}
 
 <figure class="publication-figure figure-landscape" id="blog-figure-1"><div class="figure-heading"><span class="figure-label">图 1</span><button aria-label="放大查看：图 1" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="数字人对弹幕进行文本与口播回复。" decoding="async" height="2072" loading="lazy" src="../agenticrl/images/figure-fba13ebfdc1f.png" width="1012"/></div><figcaption class="publication-caption">数字人对弹幕进行文本与口播回复。</figcaption></figure>
 
 - 观众在数字人直播间发送弹幕时，数字人主播会基于直播间商品信息、商家预设问答对等信息对观众进行弹幕和口播的回复；
 - 我们的算法在这个场景下控制数字人主播对观众的互动行为，包括要回复什么、要不要调整讲品顺序到观众想听的商品等。
 
-### 固定流程卡在哪里
+### 固定工作流的限制 {#固定流程卡在哪里}
 
 面对快速变化的直播业务，原有“意图识别—检索—生成”的静态 Workflow 架构已遭遇严重瓶颈，主要体现在三大维度：
 
@@ -22,7 +22,7 @@
 
 让我们开始认真考虑换架构的，还有模型能力和推理成本的变化。当时，30B MoE 模型在单卡 H20 上已经能跑到 140 tokens/s，基座的工具使用能力也更可用了。原来需要写成分支的动作，开始有机会交给模型按上下文决定：缺什么信息就查什么，查错了还能回头。这给了我们一个可行的起点，但能做出演示和能稳定上线之间，仍然隔着延迟、事实质量和训练方式几个问题。
 
-### 先让模型决定下一步
+### Agent 决策流程 {#先让模型决定下一步}
 
 完成了从 Workflow 架构到 Agentic 架构的升级：
 
@@ -56,7 +56,7 @@
 
 <figure class="publication-figure figure-landscape" id="blog-figure-4"><div class="figure-heading"><span class="figure-label">图 4</span><button aria-label="放大查看：图 4" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="将当前讲解文案作为互动上下文。" decoding="async" height="571" loading="lazy" src="../agenticrl/images/figure-e059d6809841.png" width="1080"/></div><figcaption class="publication-caption">将当前讲解文案作为互动上下文。</figcaption></figure>
 
-### 再把延迟和回复质量拉回可用范围
+### 延迟与回复质量优化 {#再把延迟和回复质量拉回可用范围}
 
 直播互动要求低延迟，同时还要保证回复正确、有帮助。模型优化分别从这两方面入手：
 
@@ -104,7 +104,7 @@
 
 这份互动评测集上，Agent 的正确性和帮助性都高于 Workflow，也高于表中的 Gemini-2.5-pro 与 Qwen3-235B-A22B。这说明规划、工具使用和回复训练的配合对当前任务有效。比较结果同时受输入组织和调用方式影响，因此仅代表这里的业务评测，不作为通用能力排名。
 
-### 上线后看到了什么
+### 线上效果 {#上线后看到了什么}
 
 - 人工对比：使用 Agent 线上流量在 workflow 服务上进行流量回放产出相同输入下的回复结果进行对比：
 
@@ -117,12 +117,12 @@
 
 <figure class="publication-figure figure-landscape" id="blog-figure-10"><div class="figure-heading"><span class="figure-label">图 10</span><button aria-label="放大查看：图 10" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="让策略在仿真环境中完成多轮工具交互。" decoding="async" height="473" loading="lazy" src="../agenticrl/images/figure-03b1f72a6de6.png" width="1080"/></div><figcaption class="publication-caption">让策略在仿真环境中完成多轮工具交互。</figcaption></figure>
 
-## 让学生自己进环境练习
-### 蒸馏之后，还缺什么
+## Agentic RL {#让学生自己进环境练习}
+### 蒸馏的局限 {#蒸馏之后还缺什么}
 
 上线版工具模型通过教师轨迹蒸馏得到，能学到的行为受样本覆盖限制。接下来，我们尝试让学生自己在环境中调用工具，从选择、反馈和修正中学习。对于教师没有演示过的路径，学生可以在训练中探索，不必完全依赖补充标注轨迹，这就是后面的 Agentic RL 实验。
 
-### 先尝试完整交互的 RL
+### 完整交互的 RL 训练 {#先尝试完整交互的-rl}
 
 <figure class="publication-figure figure-landscape" id="blog-figure-11"><div class="figure-heading"><span class="figure-label">图 11</span><button aria-label="放大查看：图 11" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="Rollout、环境执行和奖励计算的工程链路。" decoding="async" height="603" loading="lazy" src="../agenticrl/images/figure-df52e743cd22.jpeg" width="1080"/></div><figcaption class="publication-caption">Rollout、环境执行和奖励计算的工程链路。</figcaption></figure>
 
@@ -137,7 +137,7 @@ Rollout 阶段：
 2. 采用初始化 reference model 计算 KL 散度，重要性采样部分与基础 GRPO/PPO 设置无异；
 3. 参数由训练模型更新至推理模型继续下一轮 Agentic RL 训练，Agent 模型在训练过程中同时优化工具调用与回复能力。
 
-### 训练集群和沙盒怎么配合
+### 训练集群与沙盒 {#训练集群和沙盒怎么配合}
 
 ROLL 中的 Agentic RL 仿真分成训练侧和远程沙盒两部分：
 
@@ -158,7 +158,7 @@ ROLL 封装了大部分训练流程，我们主要接入 rollout、token mask �
 
 早期训练中，仿真不稳定和 reward 无法区分轨迹好坏，是两个主要问题。仿真不稳定会让同一策略的反馈失去可比性；reward 区分不清，模型就得不到有效的更新方向。要判断训练曲线是否可靠，先得解决这两项。
 
-### 为什么只给最终奖励还不够
+### 最终奖励的局限 {#为什么只给最终奖励还不够}
 
 初期端到端 Agentic RL 没有训出效果足够好的模型，主要有以下问题：
 
@@ -166,10 +166,10 @@ ROLL 封装了大部分训练流程，我们主要接入 rollout、token mask �
 - 直接在最终奖励中加上基于 llm judge 的工具调用奖励后，虽然能带来对于工具调用的反馈，但由于 llm judge 不稳定的特点，奖励也变得更加模糊，强化学习训练变得更加难以收敛；
 - 工具调用需要理解弹幕与上下文、选择接口和参数，再根据返回结果决定是否继续查。回复则要保证事实、满足观众需求，并且表达自然。把最终回复分数分配给前面每次调用，难以区分这些职责。
 
-## 把工具调用和回复分开训练
+## Multi-Agent RL {#把工具调用和回复分开训练}
 - 我们将系统拆为工具调用 Agent 和回复 Agent，分别设计奖励，同时保留环境中的协作。工具 Agent 获取信息，回复 Agent 使用信息，两者在联合训练中都能看到对方行为变化后的结果。
 
-### 两个 Agent，怎么一起更新
+### 双 Agent 联合训练 {#两个-agent怎么一起更新}
 
 - 目前我们的互动 Multi-Agent RL 实现如下，人为的分为了工具调用模型以及回复（总结）模型，在训练中，工具调用模型仅优化工具调用部分，回复模型仅优化回复部分：
 
@@ -203,7 +203,7 @@ Multi-Agent RL 的数据组织与 step reward 接近。暂不考虑不同 Agent 
 
 <figure class="publication-figure figure-landscape" id="blog-figure-14"><div class="figure-heading"><span class="figure-label">图 14</span><button aria-label="放大查看：图 14" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="Multi-Agent RL 的训练曲线。" decoding="async" height="555" loading="lazy" src="../agenticrl/images/figure-ccf4faac74d8.png" width="1080"/></div><figcaption class="publication-caption">Multi-Agent RL 的训练曲线。</figcaption></figure>
 
-### 训练曲线里要看什么
+### 训练曲线 {#训练曲线里要看什么}
 
 <figure class="publication-figure figure-landscape" id="blog-figure-15"><div class="figure-heading"><span class="figure-label">图 15</span><button aria-label="放大查看：图 15" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="回复质量与工具合理性的实验结果。" decoding="async" height="765" loading="lazy" src="../agenticrl/images/figure-266baeef002c.png" width="1080"/></div><figcaption class="publication-caption">回复质量与工具合理性的实验结果。</figcaption></figure>
 
@@ -217,7 +217,7 @@ Multi-Agent RL 的数据组织与 step reward 接近。暂不考虑不同 Agent 
 - 正确性和帮助性主要在评最终回复。只根据最终有没有幻觉，就给前面的每次工具调用分配好坏，反馈会比较间接，甚至可能鼓励错误的路径。
 - 反过来也一样：工具调用合理性关注信息获取过程，用它直接评价最终回复，仍然会漏掉事实表达和用户需求这两部分。
 
-### 与监督微调版本比一比
+### 与监督微调的对比 {#与监督微调版本比一比}
 
 <figure class="publication-figure figure-landscape" id="blog-figure-16"><div class="figure-heading"><span class="figure-label">图 16</span><button aria-label="放大查看：图 16" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="多智能体协同训练的消融对比。" decoding="async" height="474" loading="lazy" src="../agenticrl/images/figure-bb193e83747b.png" width="1080"/></div><figcaption class="publication-caption">多智能体协同训练的消融对比。</figcaption></figure>
 
@@ -226,7 +226,7 @@ Multi-Agent RL 的数据组织与 step reward 接近。暂不考虑不同 Agent 
 
 - 相对这组实验的 SFT 基线，回复正确性提高 4.1pt、帮助性提高 23.6pt，工具调用合理性提高 18.2pt。两部分分别记录，再检查完整系统，避免最终回复分数掩盖工具能力的变化。
 
-### 收益来自哪里
+### 收益分析 {#收益来自哪里}
 
 <figure class="publication-figure figure-landscape" id="blog-figure-17"><div class="figure-heading"><span class="figure-label">图 17</span><button aria-label="放大查看：图 17" class="figure-expand" type="button">查看大图 ↗</button></div><div class="figure-media"><img alt="不同训练与奖励配置的对比。" decoding="async" height="236" loading="lazy" src="../agenticrl/images/figure-087efade9246.png" width="1080"/></div><figcaption class="publication-caption">不同训练与奖励配置的对比。</figcaption></figure>
 
@@ -246,7 +246,7 @@ Multi-Agent RL 的数据组织与 step reward 接近。暂不考虑不同 Agent 
 - 当前 Multi-Agent 基本是来自于单 Agent ReAct 架构的阶段性解耦策略，更接近于 Dr.MAS 这样的串行 Multi-Agent，类似于 sub-agent、agent-swarm 等并行化 Multi-Agent 优势仍未体现出来；
 - 目前训练仍围绕具体任务。新增工具或信息时，旧模型未必能直接使用，既需要改善泛化，也可以通过 Skill 的渐进式披露在运行时提供用法。后续 Harness 工作继续处理模型如何适应环境变化的问题。
 
-## 怎么理解这些结果
+## 结果与限制 {#怎么理解这些结果}
 
 线上 A/B 与离线 Multi-Agent RL 是不同阶段的实验。1.79 秒的平均端到端延迟、下降 1.36 秒，以及多轮用户比例提升 2.76%，对应的是从 Workflow 升级到 Agentic 架构后的线上对比；不能直接归因于后面的 Multi-Agent RL。
 

@@ -49,7 +49,8 @@ def main():
         rendered=EQUATION.sub(lambda match:(ROOT/'editorial/equations'/(match[1]+'.html')).read_text(encoding='utf-8').strip(),rendered)
         assert '<!-- image:' not in rendered and '<!-- figure:' not in rendered
         (page/'blog.md').write_text(rendered+'\n',encoding='utf-8')
-        visible=BeautifulSoup(PATTERN.sub('',text),'html.parser')
+        reading_text=re.sub(r'(?m)^(#{1,6} .+?)\s+\{#[^}\n]+\}[ \t]*$',r'\1',text)
+        visible=BeautifulSoup(PATTERN.sub('',reading_text),'html.parser')
         for formula in visible.select('svg, script, style'):
             formula.decompose()
         plain=visible.get_text(' ',strip=True)

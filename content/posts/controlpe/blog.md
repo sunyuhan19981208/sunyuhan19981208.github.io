@@ -2,7 +2,7 @@ Asking a model to be concise is easy. Asking it to be only a little more concise
 
 We explored this in ControlPE in 2023: distill a prompt-induced behavior into a LoRA adapter, then adjust its merge weight. The experiments cover concise replies, refusal, and step-by-step reasoning, including settings between a fully applied instruction and no instruction.
 
-## Finding the instruction leaves another decision
+## Prompt strength control {#finding-the-instruction-leaves-another-decision}
 
 Prompt optimization usually searches over words. We can rewrite instructions by hand or generate candidates and evaluate them automatically. After finding a useful instruction, however, the most direct choices remain including it or leaving it out. Words such as “slightly” express intent without defining a calibrated amount.
 
@@ -14,7 +14,7 @@ Once an instruction has been chosen, ControlPE learns a parameter update associa
 
 The coefficient is continuous; generated text is not. Changing the coefficient need not change every answer smoothly, or by the same amount. Our curves describe behavior over a set of questions, not an exact word budget for each reply.
 
-## Turn the instruction into an adapter
+## Prompt distillation and weight scaling {#turn-the-instruction-into-an-adapter}
 
 The method has three steps. The important detail is a deliberate difference between the input used to produce labels and the input used to train the adapter.
 
@@ -30,7 +30,7 @@ The original template organizes the task; the target prompt specifies the behavi
 
 Distillation still depends on the prompted base model. Poor demonstrations will not supply a missing capability, and shorter labels may omit information. Both task completion and the behavior being transferred need checking.
 
-### Remove the target prompt during training
+### Train LoRA without the target prompt {#remove-the-target-prompt-during-training}
 
 We freeze the base model and train LoRA on those input–response pairs. Training uses the original template and task input, but omits the target instruction. The desired response still comes from the prompted generation. The adapter must therefore account for an influence that is no longer present in the text input.
 
@@ -40,7 +40,7 @@ Removing the target instruction during training makes the adapter learn its effe
 
 Reproduction remains approximate. We fit outputs on finite data; we do not establish that a parameter update and a natural-language instruction are equivalent for every input. The base model, template, and data distribution remain part of the experiment. Changing them calls for another check.
 
-### Scale the update, not the base model
+### Scale the LoRA weights {#scale-the-update-not-the-base-model}
 
 LoRA represents a weight update using two low-rank matrices. We attach a coefficient to the resulting update. In the expression below, λ is the coefficient we vary, while s is the adapter’s existing scaling factor. Keeping those concepts separate makes implementation easier to reason about.
 
@@ -50,7 +50,7 @@ At zero, the learned update is absent. At one, it is fully applied. Intermediate
 
 Scaling both low-rank matrices by λ scales their product by λ squared. The paper compares this with single-matrix scaling and uses the latter in subsequent experiments. Before comparing coefficients between implementations, check which update each coefficient actually applies.
 
-## Start with response length
+## Response length control {#start-with-response-length}
 
 The experiments use LLaMA2-7B-chat, with rank-16 LoRA adapters on every attention `q_proj` and `v_proj`. Training uses batch size 128, a learning rate of 3e-4, and three epochs. These describe the historical setup, rather than defaults we would automatically recommend for another model.
 
@@ -70,7 +70,7 @@ Single-matrix scaling produces an approximately linear aggregate length curve on
 
 The aggregate hides individual differences. A lookup may already need only one sentence; a multi-step explanation may get shorter by losing a necessary step. The curve can identify a weight range for inspection, but the coefficient is not a fixed length budget for every answer.
 
-## Refusal is a trade-off, not a rate to maximize
+## Refusals and false refusals {#refusal-is-a-trade-off-not-a-rate-to-maximize}
 
 The second experiment uses document question answering. A reply should draw on the supplied material and abstain when that material cannot answer the question. We distill an instruction expressing that requirement, then adjust its influence between answering too readily and refusing too often.
 
@@ -86,7 +86,7 @@ The scoring rule explains another feature of the curve. Direct refusal is counte
 
 Refusal needs calibration against evidence availability. Maximizing refusals can favor an unhelpful model; maximizing answers can conceal unsupported claims. Scanning the coefficient makes the trade-off easier to inspect, with answerable and unanswerable cases checked separately.
 
-## A stronger reasoning prompt is not always better
+## CoT strength and answer quality {#a-stronger-reasoning-prompt-is-not-always-better}
 
 We next distill step-by-step reasoning. The first 10,000 Alpaca instructions again supply the demonstrations, and GSM8K supplies the evaluation task. The distillation data is therefore different from the benchmark; this procedure does not construct labels from GSM8K reference solutions.
 
@@ -102,7 +102,7 @@ The best region in the weight scan is around 0.8, rather than the fully applied 
 
 The result near 0.8 belongs to the 7B model and evaluation setup from 2023. Neither that coefficient nor its accuracy gain transfers directly to other reasoning models. The experiment shows why scanning intermediate weights can reveal a useful region missed by a prompted/unprompted comparison.
 
-## Two adapters give a surface to calibrate
+## Combining LoRA adapters {#two-adapters-give-a-surface-to-calibrate}
 
 We also combine brevity and refusal control. This experiment reuses the two adapters already trained; it does not train a new adapter for their combination. Written as a sum of updates, the idea is:
 
@@ -120,7 +120,7 @@ A reproduction can compare individual adapter scans with the joint scan. Establi
 
 The same reasoning argues against assuming that many adapters will compose cleanly. This experiment covers two specific behaviors, datasets, and updates. Each extra control would introduce another interaction to inspect. The coefficients offer a convenient experimental space, not a guarantee that the space remains easy to calibrate as it grows.
 
-## Two meanings of continuous control
+## Comparison with other control methods {#two-meanings-of-continuous-control}
 
 ControlPE can be confused with soft prompts or prompt tuning. Those also involve continuous parameters, but this method does not replace an input instruction with trainable embeddings. The learned change lives in internal LoRA updates, while the inference input can keep the original text template. Where the update lives matters when deciding whether an existing serving stack can support it.
 
@@ -128,7 +128,7 @@ It also differs from changing sampling temperature. Temperature changes how the 
 
 Check the adapter’s built-in scaling separately from the control coefficient. A tool may fold scaling into a matrix or apply it during the forward pass. Zero should recover the base model and full strength the trained adapter; verify those endpoints before interpreting intermediate values.
 
-## A calibration pass I would run
+## Calibration notes {#a-calibration-pass-i-would-run}
 
 Start calibration with three references: the original template, the target prompt added to it, and the full adapter applied to it. The first pair tests the instruction, and the third tests its transfer. If the full adapter has not learned the behavior, data or training needs attention before a finer weight scan.
 
@@ -140,7 +140,7 @@ For two adapters, begin with a sparse grid, compare it with the individual scans
 
 These are suggested calibration checks, not additional product tests reported in the paper. Whether the calibration survives a new base model, template, or question distribution still requires testing.
 
-## How I would use the dial
+## Use cases and limitations {#how-i-would-use-the-dial}
 
 ControlPE separates instruction choice from strength choice. The prompt defines a behavior, distillation learns a reusable update, and a weight scan finds a suitable range. Each step affects how the final coefficient should be interpreted.
 
