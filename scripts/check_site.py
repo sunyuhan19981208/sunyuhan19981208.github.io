@@ -18,9 +18,11 @@ class Page(HTMLParser):
 
 errors=[]
 entries=json.loads((PUBLIC/'index.json').read_text(encoding='utf-8'))
-if len(entries)!=10:errors.append(f'Expected 10 language editions, got {len(entries)}')
 works=json.loads((ROOT/'data/works.json').read_text(encoding='utf-8'))
-if len(works)!=5:errors.append(f'Expected 5 independent works, got {len(works)}')
+expected_slugs=[slug for work in works for slug in work['versions']]
+if len(set(expected_slugs))!=len(expected_slugs):errors.append('Duplicate editions in works.json')
+if len({work['id'] for work in works})!=len(works):errors.append('Duplicate work IDs')
+if len(entries)!=len(expected_slugs):errors.append(f'Expected {len(expected_slugs)} language editions, got {len(entries)}')
 for work in works:
     editions=[entry for entry in entries if entry.get('workId')==work['id']]
     if len(editions)!=2 or {entry.get('language') for entry in editions}!={'zh-CN','en'}:
@@ -59,7 +61,7 @@ for entry in entries:
 ET.parse(PUBLIC/'index.xml')
 ET.parse(PUBLIC/'sitemap.xml')
 rss=ET.parse(PUBLIC/'index.xml')
-if len(rss.findall('./channel/item'))!=5:errors.append('RSS should contain 5 works rather than duplicate editions')
+if len(rss.findall('./channel/item'))!=len(works):errors.append(f'RSS should contain {len(works)} works rather than duplicate editions')
 # Language switching must be reciprocal, and every version needs its original citation.
 for work in works:
     for slug in work['versions']:
@@ -71,4 +73,4 @@ for work in works:
         if 'cite' not in parsed.ids:errors.append(f'{slug}: missing original citation')
 if errors:
     print('\n'.join(errors[:50]));print(f'{len(errors)} errors');sys.exit(1)
-print(f'PASS: 5 bilingual works, {len(entries)} full-text editions; {len(pages)} HTML files; language switches; local images and links; RSS and sitemap.')
+print(f'PASS: {len(works)} bilingual works, {len(entries)} full-text editions; {len(pages)} HTML files; language switches; local images and links; RSS and sitemap.')

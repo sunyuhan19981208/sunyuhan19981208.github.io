@@ -1,0 +1,11 @@
+{
+  "controlpe-data": {"tex": "\\begin{aligned}y_i^{\\star}&=f_{\\theta}(P_{\\mathrm{original}},P_{\\mathrm{target}},x_i),\\\\[5pt]\\mathcal D_{\\mathrm{distill}}&=\\{(x_i,y_i^{\\star})\\}_{i=1}^{n}.\\end{aligned}"},
+  "controlpe-loss": {"tex": "\\mathcal L_{\\mathrm{LoRA}}=\\sum_{(x,y^{\\star})\\in\\mathcal D_{\\mathrm{distill}}}\\mathrm{CE}\\!\\left(f_{\\theta+\\Delta\\theta}(P_{\\mathrm{original}},x),y^{\\star}\\right)."},
+  "controlpe-scale": {"tex": "\\begin{aligned}W_{\\lambda}&=W_0+\\lambda sBA,\\\\[5pt](\\lambda B)(\\lambda A)&=\\lambda^2 BA.\\end{aligned}"},
+  "controlpe-compose": {"tex": "W_{\\lambda,\\mu}=W_0+\\lambda\\Delta W_{\\mathrm{short}}+\\mu\\Delta W_{\\mathrm{refuse}}."},
+  "opd-stage-one": {"tex": "\\begin{aligned}R_{A,i,j}&=c_{i,j},\\\\[5pt]R_{S,i}&=0.9R_{\\mathrm{EM},i}+0.1b_{S,i},\\\\[5pt]R_{\\mathrm{EM},i}&=\\max_j c_{i,j}.\\end{aligned}"},
+  "opd-objective": {"tex": "\\begin{aligned}\\mathcal L_{\\mathrm{OPD}}(\\theta)&=\\mathbb E_{\\tau\\sim\\pi_\\theta}\\!\\left[\\sum_t M_t\\ell_t(\\theta)\\right],\\\\[5pt]\\ell_t(\\theta)&=D_{\\mathrm{KL}}\\!\\left(\\pi_\\theta(\\cdot\\mid h_t)\\,\\Vert\\,\\pi_T(\\cdot\\mid h_t)\\right).\\end{aligned}"},
+  "opd-token": {"tex": "\\widehat A^{\\mathrm{OPD}}_{S,t}=\\beta M_t\\!\\left[\\log\\pi_T(a_t\\mid h_t)-\\log\\pi_{\\mathrm{old}}(a_t\\mid h_t)\\right],\\quad\\beta=0.01."},
+  "opd-roles": {"tex": "\\widehat A_t=\\begin{cases}\\widehat A^{\\mathrm{GRPO}}_{L,i},&r(a_t)=L,\\\\[5pt]\\widehat A^{\\mathrm{GRPO}}_{A,i,j},&r(a_t)=A,\\\\[5pt]\\widehat A^{\\mathrm{OPD}}_{S,t},&r(a_t)=S.\\end{cases}"},
+  "opd-leader": {"tex": "\\begin{aligned}R_{L,i}&=0.9R_{\\mathrm{EM},i}+0.1R_{\\mathrm{assign},i},\\\\[5pt]R_{\\mathrm{assign},i}&=\\min(C_{\\mathrm{tool},i},6)/6.\\end{aligned}"}
+}

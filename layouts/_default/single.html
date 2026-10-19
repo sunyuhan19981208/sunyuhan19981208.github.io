@@ -18,9 +18,9 @@
         <p><a href="{{ .Params.source }}" target="_blank" rel="noopener noreferrer">{{ .Params.sourceTitle | default .Title }} ↗</a></p>
         {{ if eq .Params.workId "harness-aware-training" }}{{ with site.GetPage (printf "/posts/%s" .Params.counterpart) }}<p><a href="{{ .Params.source }}" target="_blank" rel="noopener noreferrer">{{ if $en }}Chinese practice article{{ else }}英文技术报告{{ end }} ↗</a></p>{{ end }}{{ end }}
         {{ with .Params.pdf }}<p><a href="{{ . }}" target="_blank" rel="noopener noreferrer">PDF ↗</a></p>{{ end }}
-        {{ if .Params.arxiv }}<details class="citation-details"><summary>BibTeX</summary><div class="bibtex-wrap"><button class="copy-citation">Copy BibTeX</button><pre><code id="bibtex">@article{taolive{{ .Date.Format "2006" }}{{ .Params.workId | replaceRE `-` `` }},
+        {{ if .Params.arxiv }}<details class="citation-details"><summary>BibTeX</summary><div class="bibtex-wrap"><button class="copy-citation">Copy BibTeX</button><pre><code id="bibtex">@article{ {{- .Params.citationKey | default (printf "taolive%s%s" (.Date.Format "2006") (.Params.workId | replaceRE `-` ``)) -}},
   title = { {{- .Params.sourceTitle | default .Title -}} },
-  author = { {{- if eq .Params.arxiv "2510.07685" -}}Sun, Yuhan and Huang, Zhiwei and Cui, Wanqing and Xiong, Shaopan and Guo, Yazhi and Jin, Meiguang and Ma, Junfeng{{- else -}}{TaoLive AIGC LLM Team}{{- end -}} },
+  author = { {{- with .Params.bibAuthors -}}{{ . }}{{- else -}}{{- if eq .Params.arxiv "2510.07685" -}}Sun, Yuhan and Huang, Zhiwei and Cui, Wanqing and Xiong, Shaopan and Guo, Yazhi and Jin, Meiguang and Ma, Junfeng{{- else -}}{TaoLive AIGC LLM Team}{{- end -}}{{- end -}} },
   journal = {arXiv preprint arXiv:{{ .Params.arxiv }}},
   year = { {{- .Date.Format "2006" -}} },
   url = {https://arxiv.org/abs/{{ .Params.arxiv }}}

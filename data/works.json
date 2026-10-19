@@ -38,5 +38,21 @@
       "harness-aware-training",
       "harness-aware-training-cn"
     ]
+  },
+  {
+    "id": "controlpe",
+    "primary": "controlpe",
+    "versions": [
+      "controlpe",
+      "controlpe-cn"
+    ]
+  },
+  {
+    "id": "multiagent-opd",
+    "primary": "multiagent-opd",
+    "versions": [
+      "multiagent-opd",
+      "multiagent-opd-cn"
+    ]
   }
 ]

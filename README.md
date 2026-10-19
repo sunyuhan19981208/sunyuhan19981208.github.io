@@ -70,8 +70,8 @@ blog/
 ├── static/css/editorial.css  # 全站排版、深浅色、响应式与打印样式
 ├── static/css/publications.css # 英文论文公式、图注、数据表格样式
 ├── static/js/main.js         # 搜索、筛选、目录、图片放大、引用复制
-├── data/sources.json         # 六篇原文来源、论文版本和导入校验值
-├── data/works.json           # 五篇独立文章与十个语言版本的对应关系
+├── data/sources.json         # 原文来源、论文版本和导入校验值
+├── data/works.json           # 七篇独立文章与十四个语言版本的对应关系
 ├── data/translations.json    # 四份新增译文的来源、覆盖块数与源文校验值
 ├── scripts/                  # Hugo 启动、内容导入、静态链接校验
 ├── .github/workflows/        # GitHub Pages 自动构建与发布
@@ -89,10 +89,11 @@ blog/
 
 完整的原始正文、四份完整翻译及论文排版资源仍保存在 `content/posts/` 的 `index.md`、`source.html`、`body.html` 中，便于查证和后续维护。模板、搜索、归档和 RSS 都以博客稿为准，不再把全文论文作为默认阅读页。
 
-- 六个原始出版来源整合为 **五篇文章、十个中英文版本**。Harness 中文实践文章与英文技术报告归为同一篇工作的两个版本，其余四篇分别补齐缺少的语言。
-- 首页、归档、标签、RSS 每篇工作只出现一次；文章页与列表提供中文 / English 链接，搜索覆盖全部十份正文。旧的 Harness 中文链接继续可用。
+- 八个原始出版来源整合为 **七篇文章、十四个中英文版本**。Harness 中文实践文章与英文技术报告归为同一篇工作的两个版本，其余工作分别提供中英文博客稿。
+- 首页、归档、标签、RSS 每篇工作只出现一次；文章页与列表提供中文 / English 链接，搜索覆盖全部十四份正文。旧的 Harness 中文链接继续可用。
 - 英文补充版本包括弹幕互动、模型蒸馏与路径压缩、AgenticRL；中文补充版本为 LiveThinking。完整翻译留作源稿，展示时使用逐篇编写的双语博客稿。
 - 论文导入版本：LiveThinking **v1**；Harness-Aware Training **v5（2026-10-04）**。中文解读保持微信公众号原文，不强行同步为英文新版措辞。
+- ControlPE **v1（2023-11-16）** 与 MultiAgent-OPD **v1（2026-10-16）** 分别整理为两份双语博客稿；保留原论文技术图表，省略机构介绍与完整论文附录。原文 PDF 的校验值记在 `data/sources.json`，新增矢量图直接复用论文 SVG。
 - 文章标题、简介和目录以博客稿为准；详细论证和完整参考文献可通过文末原文链接查阅。
 - 图片已本地化，不依赖微信防盗链；英文公式预先排为自包含的 SVG，行内公式保持基线，独立长公式分行对齐；读者浏览时无需数学脚本或第三方 CDN。
 - 博客正文统一省略机构标识、重复的团队宣传介绍及公众号的跨栏目推荐；保留技术图表、论文署名、参考文献与原文出处。清理规则随导入和排版脚本执行，重新生成时不会恢复宣传模块。
@@ -117,7 +118,9 @@ python scripts/typeset_publications.py
 
 ### 双语内容维护
 
-`workId` 标识同一篇工作，`counterpart` 指向另一个语言版本，`secondaryVersion` 控制是否作为独立列表条目。`data/works.json` 记录五组对应关系；原有 URL 均保留。每个页面有自己的 canonical，并以 `hreflang` 关联语言版本。
+`workId` 标识同一篇工作，`counterpart` 指向另一个语言版本，`secondaryVersion` 控制是否作为独立列表条目。`data/works.json` 记录七组对应关系；原有 URL 均保留。每个页面有自己的 canonical，并以 `hreflang` 关联语言版本。构建与检查脚本按此清单核对版本数量，新增工作无需改写固定计数。
+
+新增博客稿的独立公式使用 `<!-- equation:公式标识 -->` 引用。编辑 `editorial/equations.json` 中的 TeX，运行 `python scripts/render_editorial_equations.py` 生成 `editorial/equations/*.html`，再运行 `python scripts/build_editorial.py`。两种语言复用同一份静态公式，不依赖浏览器 MathJax。公式分行、可横向滚动容器和本地 SVG 一起提交；普通构建无需重新排版。论文署名在各版本元数据的 `bibAuthors` 中维护。
 
 四份完整源稿译文的逐段翻译保存在 `scripts/translations/*.json`。`scripts/translation_segments.py` 提取段落并保护公式、图片、交叉引用；`scripts/build_bilingual.py` 检查覆盖和占位符，然后生成源稿及版本元数据，不覆盖 `editorial/posts/` 的博客稿。普通构建不需要运行这些脚本。修改原文后需同步审校对应翻译和博客稿：
 
@@ -132,4 +135,4 @@ Harness 的中文实践解读与英文 v5 报告来自不同的出版版本，�
 
 ## 来源与权属
 
-全部内容来自作者提供的六个公开出版链接，见 [data/sources.json](data/sources.json)；文章、图表与论文权利归原作者及原出版方所有，保留原有署名和引用。模板、样式与脚本是本项目新编写的代码。更新来源时请核对论文版本与对应中文解读。
+全部内容来自作者提供的八个公开出版链接，见 [data/sources.json](data/sources.json)；文章、图表与论文权利归原作者及原出版方所有，保留原有署名和引用。模板、样式与脚本是本项目新编写的代码。更新来源时请核对论文版本与对应中文解读。

@@ -11,7 +11,8 @@ description: Yuhan 的技术博客，记录大语言模型、强化学习与数�
 
 - **实时交互**：多轮意图识别、实体解析、商品检索与数字人回复生成。
 - **高效推理**：模型蒸馏、推理路径压缩，以及质量与延迟之间的权衡。
-- **Agent 与强化学习**：从 RLVR 到 Multi-Agent RL，再到适应执行环境变化的 Harness-Aware Training。
+- **可控生成**：用 ControlPE 探索提示词效果的连续调节。
+- **Agent 与强化学习**：从 RLVR、Multi-Agent RL 到 Harness-Aware Training，以及用 MultiAgent-OPD 训练分层协作。
 
 ## 关于这个博客
 

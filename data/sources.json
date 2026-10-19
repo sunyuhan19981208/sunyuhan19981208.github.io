@@ -40,5 +40,21 @@
     "version": null,
     "retrieved": "2026-10-18",
     "sha256": "4d4e73bd96bda05c4a0bf3c37de7a3b4dbfbf7225361687cf31079c18b3ae6d2"
+  },
+  {
+    "slug": "controlpe",
+    "url": "https://arxiv.org/abs/2311.09773",
+    "version": "v1",
+    "retrieved": "2026-10-19",
+    "format": "pdf",
+    "sha256": "a21994cb9a6a5f7230d47e7cbd24dc41c30111a2d7f71863873dabc44cc3ec09"
+  },
+  {
+    "slug": "multiagent-opd",
+    "url": "https://arxiv.org/abs/2610.23234",
+    "version": "v1",
+    "retrieved": "2026-10-19",
+    "format": "pdf",
+    "sha256": "0d4915aba3c5431796aa4ade70db80ea6fb122719a1e4fdef12c66d0f8a51949"
   }
 ]
