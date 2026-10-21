@@ -9,7 +9,7 @@ timeZone = 'Asia/Shanghai'
 
 [params]
   author = 'Yuhan Sun'
-  description = 'Yuhan 的研究笔记：LLM、强化学习与数字人。'
+  description = 'Yuhan 的研究笔记：LLM、强化学习与Agent。'
   github = 'https://github.com/sunyuhan19981208'
 
 [taxonomies]

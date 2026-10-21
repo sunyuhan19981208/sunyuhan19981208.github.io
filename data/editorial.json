@@ -6,10 +6,10 @@
     "figures": 17
   },
   "agenticrl": {
-    "title": "数字人 Agentic RL：从 RLVR 到 Multi-Agent RL",
-    "summary": "工具调用和最终回复需要不同的能力，也需要不同的奖励。",
-    "minutes": 13,
-    "figures": 17
+    "title": "淘宝直播数字人 AgenticRL 实践：从 RLVR 到 MultiAgent RL",
+    "summary": "从 Workflow 升级到 Agentic 架构，介绍 AgentTuning、回复模型 RLVR、端到端 Agentic RL 与多智能体协同强化学习的实践。",
+    "minutes": 16,
+    "figures": 19
   },
   "controlpe-cn": {
     "title": "ControlPE：控制提示词强度",
@@ -24,10 +24,10 @@
     "figures": 8
   },
   "harness-aware-training-cn": {
-    "title": "Harness-Aware Training：适应运行环境的变化",
-    "summary": "工具、规则和提示词会变，训练也不能只认一个版本。",
-    "minutes": 11,
-    "figures": 19
+    "title": "淘宝直播数字人互动 Harness-Aware Training 实践：让 Agent Model 随 Harness 一起进化",
+    "summary": "通过 Harness 状态增强、HSA-SFT、General OPD 和 HSA-RL，让低延迟模型随 Harness 一起进化。",
+    "minutes": 13,
+    "figures": 20
   },
   "harness-aware-training": {
     "title": "Harness-Aware Training: adapting to runtime changes",
@@ -54,10 +54,10 @@
     "figures": 11
   },
   "llm-barrage-interaction": {
-    "title": "直播弹幕互动：多轮理解与回复生成",
-    "summary": "从意图识别、实体解析到回复生成，记录一条弹幕经过的处理链路。",
-    "minutes": 13,
-    "figures": 11
+    "title": "淘宝直播数字人：LLM弹幕互动技术",
+    "summary": "从业务背景和互动架构出发，介绍多轮意图识别、实体解析、商品检索与互动回复生成的实践。",
+    "minutes": 15,
+    "figures": 14
   },
   "llm-distillation-and-reasoning-compression-en": {
     "title": "Model distillation and reasoning compression",
@@ -66,10 +66,10 @@
     "figures": 6
   },
   "llm-distillation-and-reasoning-compression": {
-    "title": "推理模型蒸馏与路径压缩",
-    "summary": "从 R1 蒸馏到双偏好 DPO:短一点,也要答得好一点。",
-    "minutes": 12,
-    "figures": 6
+    "title": "淘宝直播数字人LLM推理优化：模型蒸馏与路径压缩实践",
+    "summary": "从 DeepSeek-R1 蒸馏到推理路径压缩，介绍 long2short DPO、质量与长度双偏好 DP-DPO 及泛化性优化实验。",
+    "minutes": 24,
+    "figures": 8
   },
   "multiagent-opd-cn": {
     "title": "MultiAgent-OPD：分层多智能体训练",
